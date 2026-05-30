@@ -1,31 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { getMaterialRequests } from '../Api/requestWork.api';
+import Sidebar from '../Components/Sidebar';
+import { storekeeperAPI } from '../Api/api.service';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Boxes,
-  User,
-  QrCode,
-  Users,
-  ClipboardList,
-  Package,
-  Wrench,
-  Settings,
-  Moon,
-  X,
-  Calendar,
-  MapPin,
-  Timer,
-  Locate,
-  ScanLine,
-  Sun,
-  RotateCcw, // Zedt hadou lelist
+  RotateCcw,
   PlayCircle,
   PackageCheck,
   CheckCircle,
   BookOpen,
+  QrCode,
+  User,
+  Users,
+  MapPin,
+  Calendar,
+  Package,
+  Timer,
+  Moon,
+  Sun,
+  Timer as TimerIcon
 } from 'lucide-react';
-import logo from './logo.jpg';
 
 const statusColors = {
   Completed: 'bg-[rgba(0,201,80,0.20)] text-[#05DF72] border-[rgba(0,201,80,0.50)]',
@@ -34,8 +27,10 @@ const statusColors = {
   Approved: 'bg-[rgba(43,127,255,0.20)] text-[#51A2FF] border-[rgba(43,127,255,0.50)]',
 };
 
+import { useTheme } from '../Context/ThemeContext';
+
 export default function MaterialRequests() {
-  const [dark, setDark] = useState(false);
+  const { darkMode: dark } = useTheme();
   const [filter, setFilter] = useState('All');
   const navigate = useNavigate();
   const [requestsData, setRequestsData] = useState([]);
@@ -46,9 +41,11 @@ export default function MaterialRequests() {
     const loadRequests = async () => {
       try {
         setLoading(true);
-        const data = await getMaterialRequests();
+        const res = await storekeeperAPI.getRequests();
+        const data = res.data.results || res.data || [];
         setRequestsData(data);
       } catch (err) {
+        console.error('Workflow load error:', err);
         setError('Could not load data from server');
       } finally {
         setLoading(false);
@@ -60,96 +57,21 @@ export default function MaterialRequests() {
   const filtered =
     filter === 'All' ? requestsData : requestsData.filter((r) => r.status === filter);
 
+  const handleAction = async (id, action) => {
+    try {
+      await storekeeperAPI.updateRequestStatus(id, action);
+      const res = await storekeeperAPI.getRequests();
+      setRequestsData(res.data.results || res.data || []);
+    } catch (err) {
+      console.error('Action failed:', err);
+      alert('Failed to perform action: ' + action);
+    }
+  };
+
   return (
     <div className={`${dark ? 'dark' : ''}`}>
       <div className="flex min-h-screen bg-[#F8FAFC] dark:bg-[#121825] text-gray-800 dark:text-gray-100 transition-colors">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white dark:bg-[#121825] border-r dark:border-[#1E293B] pt-2 p-4 flex flex-col">
-          <div
-            className={`flex items-center h-[97px] px-6 border-b ${dark ? 'border-[#2B4C9F]' : 'border-[#E2E8F0]'}`}
-          >
-            <div className="flex-shrink-0 w-[48px] h-[48px]">
-              <img
-                src={logo}
-                alt="Logo"
-                className="w-full h-full rounded-full bg-lightgray bg-center bg-cover bg-no-repeat"
-              />
-            </div>
-            <div className="ml-4">
-              <h1 className={`text-base font-bold ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}>
-                ESI-GM
-              </h1>
-              <p className={`text-[10px] ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
-                Lab Equipment
-              </p>
-            </div>
-          </div>
-          <nav className="space-y-2 text-gray-600 dark:text-gray-300">
-            {[
-              { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard/admin' },
-              { name: 'Inventory', icon: Boxes, path: '/inventory' },
-              { name: 'QR Scanner', icon: ScanLine, path: '/qr-scanner' },
-              { name: 'Users', icon: Users, path: '/users' },
-              { name: 'Requests', icon: ClipboardList, path: '/requests' },
-              { name: 'Material Outputs', icon: Package, path: '/material-outputs' },
-              { name: 'Maintenance', icon: Wrench, path: '/maintenance' },
-              { name: 'Settings', icon: Settings, path: '/settings' },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  onClick={() => navigate(item.path)}
-                  key={item.name}
-                  className={`p-2 rounded-lg cursor-pointer flex items-center gap-2 ${
-                    item.name === 'Requests'
-                      ? 'bg-indigo-500 text-white shadow-md'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon size={18} />
-                  <span>{item.name}</span>
-                </div>
-              );
-            })}
-          </nav>
-
-          <div className="border-t border-slate-100 dark:border-gray-700 pt-4">
-            <div className="mb-6 px-2">
-              <p className="text-base font-bold dark:text-white">Robotics Lab Admin</p>
-              <p className="text-sm text-slate-400 font-medium">Admin</p>
-            </div>
-
-            <button
-              onClick={() => {
-                localStorage.removeItem('token'); // إذا كان عندك token
-                localStorage.removeItem('user'); // مسح بيانات المستخدم
-                navigate('/login'); // يروح لصفحة login
-              }}
-              className="w-full flex text-base bg-transparent items-center gap-3 px-2 py-3 text-slate-900 dark:text-gray-300 hover:text-red-600 transition-colors font-medium group"
-            >
-              <div className="rotate-180 group-hover:translate-x-1 transition-transform">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-              </div>
-              Logout
-            </button>
-
-            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-gray-700 flex justify-center">
-              <button
-                onClick={() => navigate(-1)}
-                className="text-slate-900 bg-transparent dark:text-gray-400 hover:rotate-90 transition-transform"
-              >
-                <X size={24} />
-              </button>
-            </div>
-          </div>
-        </aside>
+        <Sidebar />
 
         {/* Main Content */}
         <main className="flex-1 p-6 space-y-6">
@@ -160,12 +82,6 @@ export default function MaterialRequests() {
                 Manage and track all material requests
               </p>
             </div>
-            <button
-              onClick={() => setDark(!dark)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm border dark:border-gray-700"
-            >
-              {dark ? <Sun size={18} className="text-white" /> : <Moon size={18} />}
-            </button>
           </div>
 
           {/* Filter */}
@@ -231,7 +147,7 @@ export default function MaterialRequests() {
             </div>
             <div>
               <button
-                onClick={() => navigate('/RequestButtonsGuide')}
+                onClick={() => navigate('/requests/guide')}
                 className="bg-[#6366F1] hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg flex items-center gap-3"
               >
                 <BookOpen size={20} /> View Complete Button Guide
@@ -268,11 +184,16 @@ export default function MaterialRequests() {
                     </span>
                   </div>
 
-                  <div className="text-sm text-[#64748B] dark:text-[#94A3B8] font-medium">
-                    <User lassName="pb-1" size={22} /> {req.student} •
-                    <MapPin className="pb-1" size={22} /> {req.lab}{' '}
-                    <Calendar className="pb-1" size={22} />
-                    {req.date}
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#64748B] dark:text-[#94A3B8] font-medium">
+                    <span className="flex items-center gap-2">
+                      <User size={18} /> {req.student}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <MapPin size={18} /> {req.lab}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Calendar size={18} /> {req.date}
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl">
@@ -310,18 +231,10 @@ export default function MaterialRequests() {
                         {req.actions.map((action, idx) => (
                           <button
                             onClick={() => {
-                              if (action === 'Mark Ready') {
-                                // فتح Modal لتجهيز المواد
-                                console.log('Mark Ready:', req.id);
-                              } else if (action === 'Confirm Pickup') {
-                                // فتح Modal لتأكيد الاستلام
-                                console.log('Confirm Pickup:', req.id);
-                              } else if (action === 'Confirm Return') {
-                                // فتح Modal لتأكيد الإرجاع
-                                console.log('Confirm Return:', req.id);
-                              } else if (action === 'View QR Code') {
-                                // فتح Modal لعرض QR Code
+                              if (action === 'View QR Code') {
                                 navigate(`/validation/${req.id}`);
+                              } else {
+                                handleAction(req.id, action);
                               }
                             }}
                             key={idx}

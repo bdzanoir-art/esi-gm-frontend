@@ -1,38 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import NewRequestModal from '../Components/NewRequestModal';
-import logo from './logo.jpg';
+import Sidebar from '../Components/Sidebar';
 import ValidationSlipPage from './ValidationSlipPage';
-import { getMyRequests } from '../Api/requests.api.js';
+import { myRequestAPI } from '../Api/api.service';
 import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
   FolderKanban,
   ClipboardList,
   Package,
-  LogOut,
   Plus,
-  Package2,
   AlertTriangle,
   CheckCircle,
   Truck,
   Sun,
-  X,
-  Calendar,
   Moon,
+  Calendar
 } from 'lucide-react';
+import { useTheme } from '../Context/ThemeContext';
 
-const MyRequestsPage = ({ toggleTheme, dark }) => {
+const MyRequestsPage = () => {
+  const { darkMode: dark } = useTheme();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [isSlipOpen, setIsSlipOpen] = useState(false);
   const openSlip = (req) => {
     setSelectedRequest(req);
     setIsSlipOpen(true);
   };
-  const addRequest = (newRequest) => {
-    setRequests([newRequest, ...requests]);
-  };
   const navigate = useNavigate();
-
   const [showModal, setShowModal] = useState(false);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,8 +35,23 @@ const MyRequestsPage = ({ toggleTheme, dark }) => {
   useEffect(() => {
     const loadRequests = async () => {
       setLoading(true);
-      const data = await getMyRequests();
-      setRequests(data);
+      try {
+        const response = await myRequestAPI.getRequests();
+        const requestList = response.data.results || response.data || [];
+        const formattedData = requestList.map((req) => ({
+          ...req,
+          title: req.project_name || `Request #${req.request_number}`,
+          requestedBy: req.student_name,
+          date: new Date(req.created_at).toLocaleDateString(),
+          update: new Date(req.updated_at).toLocaleDateString(),
+          status: req.status_display || req.status,
+          manualReview: req.status === 'pending',
+          deliveryStatus: 'Processing...',
+        }));
+        setRequests(formattedData);
+      } catch (error) {
+        console.error('Failed to load real requests:', error);
+      }
       setLoading(false);
     };
     loadRequests();
@@ -50,21 +59,35 @@ const MyRequestsPage = ({ toggleTheme, dark }) => {
 
   // دالة تحديث القائمة بعد إضافة طلب جديد (تستعمل في الـ Modal)
   const refreshRequests = async () => {
-    const data = await getMyRequests();
-    setRequests(data);
+    try {
+      const response = await myRequestAPI.getRequests();
+      const requestList = response.data.results || response.data || [];
+      const formattedData = requestList.map((req) => ({
+        ...req,
+        title: req.project_name || `Request #${req.request_number}`,
+        requestedBy: req.student_name,
+        date: new Date(req.created_at).toLocaleDateString(),
+        update: new Date(req.updated_at).toLocaleDateString(),
+        status: req.status_display || req.status,
+        manualReview: req.status === 'pending',
+        deliveryStatus: 'Processing...',
+      }));
+      setRequests(formattedData);
+    } catch (error) {
+      console.error('Refresh fail:', error);
+    }
   };
 
   const getStatusStyle = (status) => {
-    switch (status) {
-      case 'Pending':
-        return 'border border-yellow-300/20 bg-yellow-200/10 text-[#FDC700]';
-      case 'Approved':
-        return 'border border-green-500/20 bg-green-400/10 text-[#05DF72]';
-      case 'Completed':
-        return 'border border-blue-500/20 bg-blue-400/10 text-[#51A2FF]';
-      default:
-        return 'bg-gray-100 text-gray-600';
+    const s = String(status).toLowerCase();
+    if (s.includes('pending')) {
+      return 'border border-yellow-300/20 bg-yellow-200/10 text-[#FDC700]';
+    } else if (s.includes('approved')) {
+      return 'border border-green-500/20 bg-green-400/10 text-[#05DF72]';
+    } else if (s.includes('completed')) {
+      return 'border border-blue-500/20 bg-blue-400/10 text-[#51A2FF]';
     }
+    return 'bg-gray-100 text-gray-600';
   };
   const handleOpenSlip = (req) => {
     setSelectedRequest(req);
@@ -77,107 +100,7 @@ const MyRequestsPage = ({ toggleTheme, dark }) => {
       className={`flex min-h-screen flex-col md:flex-row transition-colors duration-500 ease-in-out
 ${dark ? 'bg-[#020817] text-[#E8EAF0]' : 'bg-[#F8FAFC] text-[#0F172A]'}`}
     >
-      <aside
-        className={`hidden md:flex md:w-64 flex-col h-screen
-${dark ? 'bg-[#020817] border-r border-[#2B4C9F]' : 'bg-[#FFF] border-r border-[#E2E8F0]'}`}
-      >
-        <div
-          className={`flex items-center w-full sm:w-[255px] h-auto sm:h-[97px] px-4 sm:px-6 ${dark ? 'border-b border-[#2B4C9F]' : 'border-b border-[#E2E8F0]'} flex-shrink-0`}
-        >
-          <div className="flex-shrink-0 w-[48px] h-[48px]">
-            <img
-              src={logo}
-              alt="Logo"
-              className="w-full h-full rounded-full bg-lightgray bg-center bg-cover bg-no-repeat"
-            />
-          </div>
-
-          <div className="flex flex-col ml-4">
-            <h1
-              className={`font-inter text-[16px] sm:text-[18px] font-semibold leading-[20px] sm:leading-[22.5px] ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-            >
-              ESI-GM
-            </h1>
-            <p
-              className={`${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}font-inter text-[10px] sm:text-[12px] font-normal leading-[12px] sm:leading-[14px] mt-1`}
-            >
-              ESI 8 Mai 1945
-            </p>
-          </div>
-        </div>
-
-        <nav className="flex flex-col p-4 gap-2 flex-1">
-          <div onClick={() => navigate('/dashboard/student')}>
-            <NavItem
-              className={`${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-              icon={<LayoutDashboard size={20} />}
-              label="Dashboard"
-            />
-          </div>
-          <div onClick={() => navigate('/projects')}>
-            <NavItem
-              icon={<FolderKanban size={20} />}
-              label="My Projects"
-              className={`${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-            />
-          </div>
-          <div onClick={() => navigate('/my-requests')}>
-            <NavItem
-              className="bg-[#2B4C9F] text-[#FFF]"
-              icon={<ClipboardList size={20} />}
-              label="My Requests"
-              active
-            />
-          </div>
-          <div onClick={() => navigate('/materials/browse')}>
-            <NavItem
-              className={`${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-              icon={<Package size={20} />}
-              label="Browse Materials"
-            />
-          </div>
-        </nav>
-
-        <div
-          className={`flex flex-col items-start w-full sm:w-[255px] h-auto sm:h-[120px] pt-[16.667px] px-4 gap-3 flex-shrink-0 ${dark ? 'border-t border-[#2B4C9F]' : 'border-t border-[#E2E8F0]'} rounded-none`}
-        >
-          <div className="flex flex-col items-start h-[36px] px-4 flex-shrink-0 self-stretch">
-            <p className="text-sm font-semibold">Sarah Student</p>
-            <p className="text-xs text-gray-500">Student</p>
-          </div>
-          <div className="flex justify-center items-start gap-8 sm:gap-16 self-stretch">
-            <button
-              onClick={toggleTheme}
-              type="button"
-              className={`flex w-10 h-10 min-w-[40px] min-h-[40px] justify-center items-center rounded-xl border mr-3 p-0 transition-all duration-100
-    ${dark ? 'bg-[#020817] border-[#2B4C9F]' : 'bg-white border-[#E2E8F0] hover:bg-gray-100'}`}
-            >
-              {dark ? (
-                <Moon size={20} stroke="#2B4C9F" fill="transparent" />
-              ) : (
-                <Sun size={20} stroke="#2B4C9F" fill="transparent" />
-              )}
-            </button>
-            <button
-              onClick={() => {
-                localStorage.removeItem('token'); // إذا كان عندك token
-                localStorage.removeItem('user'); // مسح بيانات المستخدم
-                navigate('/login'); // يروح لصفحة login
-              }}
-              className={`flex items-center bg-transparent gap-2 ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'} hover:text-red-600 transition-colors py-2`}
-            >
-              <LogOut className="w-[20px] h-[20px] flex-shrink-0" />
-              <span className="text-sm font-medium">Logout</span>
-            </button>
-          </div>
-        </div>
-        <button
-          onClick={() => navigate('/dashboard/student')}
-          className={`flex flex-col items-start w-full sm:w-[255px] h-auto sm:h-[52px] pt-[16.667px] px-4 sm:px-[117.667px] ${dark ? 'border-t border-[#2B4C9F]' : 'border-t border-[#E2E8F0]'} bg-transparent rounded-none`}
-        >
-          <X className="w-[20px] h-[20px] flex-shrink-0" />
-        </button>
-      </aside>
+      <Sidebar />
 
       <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
@@ -268,11 +191,11 @@ focus:outline-none focus:ring-2 focus:ring-[#2B4C9F] ${
                           key={idx}
                           className={`flex justify-between text-xs sm:text-sm ${dark ? 'text-[#E8EAF0] bg-[#020817] bg-opacity-50' : 'text-[#0F172A] bg-[#F8FAFC] bg-opacity-50'} rounded-l p-1 pb-2 last:border-0`}
                         >
-                          <span>{item.name}</span>
+                          <span>{item.material_name || item.name}</span>
                           <span
                             className={`font-mono ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}
                           >
-                            Qty: {item.qty}
+                            Qty: {item.quantity || item.qty}
                           </span>
                         </div>
                       ))}
@@ -323,10 +246,10 @@ focus:outline-none focus:ring-2 focus:ring-green-400 ${
                           <div className="flex items-center gap-2 text-[#51A2FF] text-sm font-semibold mb-1">
                             <Truck size={16} /> Delivery Status
                           </div>
-                          <p className="text-xs text-orange-600 flex items-center gap-1">
+                          <div className="text-xs text-orange-600 flex items-center gap-1">
                             <AlertTriangle className="text-[#FDC700]" size={12} />
-                            <p className="text-[#51A2FF]">{req.deliveryStatus}</p>
-                          </p>
+                            <span className="text-[#51A2FF]">{req.deliveryStatus}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -345,7 +268,7 @@ focus:outline-none focus:ring-2 focus:ring-green-400 ${
           dark={dark}
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          onAddRequest={addRequest}
+          onAddRequest={refreshRequests}
         />
       </main>
       <ValidationSlipPage

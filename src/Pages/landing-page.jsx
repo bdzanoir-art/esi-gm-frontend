@@ -11,7 +11,7 @@ import {
   ChevronRight,
   Circle,
 } from 'lucide-react';
-import ThemeToggle from '../components/ThemToggel';
+import ThemeToggle from '../Components/ThemToggel';
 import { useNavigate } from 'react-router-dom';
 
 import '../App.css';

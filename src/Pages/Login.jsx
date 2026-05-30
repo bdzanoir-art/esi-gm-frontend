@@ -1,26 +1,52 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ThemeToggle from '../components/ThemeToggle';
-import { Mail, Lock, ArrowLeft } from 'lucide-react';
+import ThemeToggle from '../Components/ThemeToggle';
+import { Mail, Lock, ArrowLeft, Loader2 } from 'lucide-react';
 import logo from '../assets/img.png';
 import '../hook/Login.css';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email === 'super@esi.com') {
-      navigate('/dashboard/superadmin');
-    } else if (email === 'admin@esi.com') {
-      navigate('/dashboard/admin');
-    } else if (email === 'store@esi.com') {
-      navigate('/dashboard/storekeeper');
-    } else {
-      navigate('/dashboard/student');
+    setError('');
+    setLoading(true);
+
+    try {
+      const result = await login({ email, password });
+      
+      if (result.success) {
+        // Redirect based on user role
+        const role = result.user?.role || 'student';
+        switch (role) {
+          case 'superadmin':
+            navigate('/dashboard/superadmin');
+            break;
+          case 'admin':
+            navigate('/dashboard/admin');
+            break;
+          case 'storekeeper':
+            navigate('/dashboard/storekeeper');
+            break;
+          default:
+            navigate('/dashboard/student');
+        }
+      } else {
+        setError(result.error || 'Login failed. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,14 +68,19 @@ export default function Login() {
         </div>
 
         <div className="login-card-v3">
-          <div className="login-demo">
-            <h3>Demo Accounts:</h3>
-            <ul>
-              <li>• Admin: a.admin@esi-sba.dz</li>
-              <li>• Storekeeper: s.keeper@esi-sba.dz</li>
-              <li>• Student: m.student@esi-sba.dz</li>
-            </ul>
-          </div>
+
+          {error && (
+            <div className="login-error" style={{ 
+              background: '#fee2e2', 
+              color: '#dc2626', 
+              padding: '12px', 
+              borderRadius: '8px', 
+              marginBottom: '16px',
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          )}
 
           <form className="login-form-v3" onSubmit={handleSubmit}>
             <div className="login-field-v3">
@@ -79,8 +110,18 @@ export default function Login() {
               </div>
             </div>
 
-            <button type="submit" className="login-submit-v3">
-              Sign In
+            <button 
+              type="submit" 
+              className="login-submit-v3"
+              disabled={loading}
+              style={{ opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+            >
+              {loading ? (
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Loader2 size={16} className="animate-spin" />
+                  Signing in...
+                </span>
+              ) : 'Sign In'}
             </button>
           </form>
 

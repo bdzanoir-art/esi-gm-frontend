@@ -1,27 +1,56 @@
-import { useState } from 'react';
-import { AlertCircle, Calendar, Wrench } from 'lucide-react';
-import ThemeToggel from '../components/ThemToggel.jsx';
-import Sidebare3 from '../components/Sidebare3.jsx';
+import { useState, useEffect } from 'react';
+import { AlertCircle, Calendar, Wrench, RefreshCcw } from 'lucide-react';
+import ThemeToggel from '../Components/ThemToggel.jsx';
+import Sidebar from '../Components/Sidebar';
+import { storekeeperAPI } from '../Api/api.service.js';
 
-export default function Maintenance({ maintenanceList = [] }) {
+export default function Maintenance() {
+  const [maintenanceList, setMaintenanceList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAlerts = async () => {
+    try {
+      setLoading(true);
+      const res = await storekeeperAPI.getAlerts();
+      const raw = res.data?.results || res.data || [];
+      const mapped = raw.map(a => ({
+        id: a.id,
+        material: a.material_title || `Material #${a.material}`,
+        issue: a.message || a.title || 'No details',
+        date: new Date(a.created_at).toLocaleDateString(),
+        priority: a.priority,
+        is_resolved: a.is_resolved
+      }));
+      setMaintenanceList(mapped);
+    } catch (err) {
+      console.error("Failed to fetch alerts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
+
   const stats = [
     {
       label: 'Needs Attention',
-      value: 0,
+      value: maintenanceList.filter(a => !a.is_resolved).length,
       desc: 'Materials requiring maintenance or damaged',
       icon: <AlertCircle size={24} className="text-red-500" />,
     },
     {
-      label: 'Upcoming (30 days)',
-      value: 0,
-      desc: 'Scheduled maintenance in the next 30 days',
-      icon: <Calendar size={24} className="text-yellow-500" />,
+      label: 'Resolved',
+      value: maintenanceList.filter(a => a.is_resolved).length,
+      desc: 'Maintenance completed successfully',
+      icon: <RefreshCcw size={24} className="text-green-500" />,
     },
   ];
 
   return (
     <div className="flex dynamic-bg transition-colors duration-300" style={{ fontFamily: 'Inter' }}>
-      <Sidebare3 activeLabel="Maintenance" />
+      <Sidebar />
       <main className="flex-1 relative overflow-y-auto p-8">
         <div className="absolute top-6 right-8 z-60">
           <ThemeToggel />
@@ -88,7 +117,13 @@ export default function Maintenance({ maintenanceList = [] }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {maintenanceList.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-small-custom text-xs">
+                        Loading maintenance records...
+                      </td>
+                    </tr>
+                  ) : maintenanceList.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-small-custom text-xs">
                         No maintenance records yet.
@@ -107,11 +142,11 @@ export default function Maintenance({ maintenanceList = [] }) {
                         <td className="px-4 py-3">
                           <span
                             className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              row.priority === 'Critical'
+                              row.priority?.toLowerCase() === 'critical'
                                 ? 'bg-red-100 text-red-600'
-                                : row.priority === 'High'
+                                : row.priority?.toLowerCase() === 'high'
                                   ? 'bg-orange-100 text-orange-600'
-                                  : row.priority === 'Medium'
+                                  : row.priority?.toLowerCase() === 'medium'
                                     ? 'bg-yellow-100 text-yellow-600'
                                     : 'bg-green-100 text-green-600'
                             }`}

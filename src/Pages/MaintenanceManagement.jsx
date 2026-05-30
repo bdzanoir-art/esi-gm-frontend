@@ -1,5 +1,5 @@
 import React from 'react';
-import SlideBare from '../Components/SlideBare.jsx';
+import Sidebar from '../Components/Sidebar';
 import ThemeToggle from '../Components/ThemeToggle.jsx';
 import { AlertCircle, Calendar, Wrench } from 'lucide-react';
 
@@ -21,7 +21,7 @@ function SummaryCard({ icon, title, value, subtitle, variant }) {
 export default function MaintenanceManagement() {
   return (
     <div className="mm-layout">
-      <SlideBare activeLabel="Maintenance" />
+      <Sidebar />
 
       <main className="mm-main">
         <div className="mm-topbar">

@@ -1,10 +1,17 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/users';
+const BASE_URL = 'http://localhost:8000/api/esi-gm/superadmin/users';
+
+const getAuthHeader = () => {
+  const token = localStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 export const getUsers = async () => {
   try {
-    const response = await axios.get(API_URL);
+    const response = await axios.get(`${BASE_URL}/`, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -14,7 +21,9 @@ export const getUsers = async () => {
 
 export const deleteUser = async (id) => {
   try {
-    await axios.delete(`${API_URL}/${id}`);
+    await axios.delete(`${BASE_URL}/${id}/`, {
+      headers: getAuthHeader(),
+    });
     return id;
   } catch (error) {
     console.error('Error deleting user:', error);
@@ -24,10 +33,24 @@ export const deleteUser = async (id) => {
 
 export const createUser = async (userData) => {
   try {
-    const response = await axios.post(API_URL, userData);
+    const response = await axios.post(`${BASE_URL}/`, userData, {
+      headers: getAuthHeader(),
+    });
     return response.data;
   } catch (error) {
     console.error('Error creating user:', error);
+    throw error;
+  }
+};
+
+export const updateUserRole = async (id, role) => {
+  try {
+    const response = await axios.put(`${BASE_URL}/${id}/`, { role }, {
+      headers: getAuthHeader(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user role:', error);
     throw error;
   }
 };

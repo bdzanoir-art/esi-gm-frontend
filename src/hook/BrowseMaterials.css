@@ -1,0 +1,267 @@
+/* =========================================================
+   BrowseMaterials.css  —  styles for the Browse Materials page
+   Uses the CSS variables defined in StudentDash.css
+   ========================================================= */
+
+/* ── Search input ─────────────────────────────────────────── */
+.browse-search-input {
+  width: 100%;
+  padding: 0.6rem 2.5rem 0.6rem 2.5rem;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 0.875rem;
+  color: var(--text-titles);
+  font-size: 0.875rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.browse-search-input::placeholder { color: var(--text-small); }
+.browse-search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* ── Category filter pills ────────────────────────────────── */
+.browse-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.browse-filter-pill {
+  padding: 0.35rem 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--butt-filter);
+  color: var(--text-small);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.browse-filter-pill:hover {
+  background: var(--card);
+  color: var(--text-titles);
+  border-color: var(--card-border);
+}
+.browse-filter-pill--active {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* ── Material card grid ───────────────────────────────────── */
+.browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Material card ────────────────────────────────────────── */
+.browse-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+  display: flex;
+  flex-direction: column;
+}
+.browse-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.browse-card__thumb {
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, transparent 100%);
+}
+.browse-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.browse-card__icon { color: var(--text-small); opacity: 0.5; }
+
+.browse-card__body {
+  padding: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+.browse-card__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-titles);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.browse-card__desc {
+  font-size: 0.75rem;
+  color: var(--text-small);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.browse-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding-top: 0.4rem;
+}
+
+/* ── Badges ───────────────────────────────────────────────── */
+.browse-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+.browse-badge--cat {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+.browse-badge--ok {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.browse-badge--out {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* ── Skeleton loader ──────────────────────────────────────── */
+.browse-card--skeleton { pointer-events: none; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--card-border) 25%, var(--br) 50%, var(--card-border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 0.5rem;
+}
+.skeleton--thumb  { height: 110px; border-radius: 0; }
+.skeleton--title  { height: 14px; width: 75%; margin-bottom: 6px; }
+.skeleton--text   { height: 11px; width: 90%; margin-bottom: 4px; }
+.skeleton--text-sm{ width: 60%; }
+.skeleton--badge  { height: 18px; width: 50%; border-radius: 9999px; margin-top: 8px; }
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Detail modal ─────────────────────────────────────────── */
+.browse-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.15s ease;
+}
+.browse-modal {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 1.25rem;
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+  position: relative;
+  animation: slideUp 0.2s ease;
+}
+.browse-modal__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: var(--butt-filter);
+  border: none;
+  border-radius: 9999px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-small);
+  transition: background 0.15s;
+  z-index: 10;
+}
+.browse-modal__close:hover { background: var(--card-border); }
+
+.browse-modal__thumb {
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, transparent 100%);
+}
+.browse-modal__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.browse-modal__body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.browse-modal__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-titles);
+  margin: 0;
+}
+.browse-modal__desc {
+  font-size: 0.85rem;
+  color: var(--text-small);
+  line-height: 1.6;
+  margin: 0;
+}
+.browse-modal__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--card-border);
+}
+.browse-modal__row:last-child { border-bottom: none; }
+.browse-modal__label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-small);
+}
+.browse-modal__value {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-titles);
+}
+
+/* ── Animations ───────────────────────────────────────────── */
+@keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }

@@ -34,7 +34,7 @@ export default function Sidebare2({ activeLabel }) {
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard/admin' },
     { label: 'Inventory', icon: Package, path: '/inventory' },
     { label: 'QR Scanner', icon: QrCode, path: '/qr-scanner' },
-    { label: 'Users', icon: Users, path: '/users' },
+    { label: 'Users', icon: Users, path: '/admin/users' },
     { label: 'Requests', icon: ClipboardList, path: '/requests' },
     { label: 'Material Outputs', icon: Package, path: '/material-outputs' },
     { label: 'Maintenance', icon: Wrench, path: '/maintenance' },

@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './Context/ThemeContext';
 import { RequestProvider } from './Context/RequestContext';
 import { ToastProvider } from './Context/ToastContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import PrivateRoute from './Components/PrivateRoute';
+
 
 // ============= PUBLIC PAGES (بالأسماء الصحيحة) =============
 import LandingPage from './Pages/landing-page'; // تأكدي: landing-page.jsx
@@ -29,66 +32,152 @@ import QRStockScanner from './Pages/QRStockScanner';
 import Maintenance from './Pages/Maintenance';
 import MyProject from './Pages/Myproject';
 import MaintenanceManagement from './Pages/MaintenanceManagement';
+import BrowseMaterials from './Pages/BrowseMaterials';
+import Settings from './Pages/Settings';
 
 import './App.css';
 
-function App() {
-  const [dark, setDark] = useState(false);
-  const toggleTheme = () => setDark(!dark);
+import { useTheme } from './Context/ThemeContext';
+
+function AppContent() {
+  const { loading: authLoading } = useAuth();
+  const { darkMode, toggleTheme } = useTheme();
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <ToastProvider>
-          <RequestProvider>
-            <div className={dark ? 'dark' : ''}>
-              <Routes>
+    <div className={darkMode ? 'dark' : ''}>
+      <Routes>
                 {/* PUBLIC ROUTES */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 
-                {/* SUPER ADMIN ROUTES */}
-                <Route path="/dashboard/superadmin" element={<SuperAdminDashboard />} />
-                <Route path="/admin/users" element={<UserManagement />} />
-                <Route path="/admin/laboratories" element={<LaboratoryManagement />} />
+                {/* SUPER ADMIN ROUTES - Protected */}
+                <Route path="/dashboard/superadmin" element={
+                  <PrivateRoute allowedRoles={['superadmin']}>
+                    <SuperAdminDashboard />
+                  </PrivateRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <PrivateRoute allowedRoles={['superadmin', 'admin']}>
+                    <UserManagement />
+                  </PrivateRoute>
+                } />
+                <Route path="/admin/laboratories" element={
+                  <PrivateRoute allowedRoles={['superadmin', 'admin']}>
+                    <LaboratoryManagement />
+                  </PrivateRoute>
+                } />
 
-                {/* ADMIN ROUTES */}
-                <Route path="/dashboard/admin" element={<AdminDashboard />} />
-                <Route path="/inventory" element={<LaboratoryInventory />} />
-                <Route path="/transfers" element={<MaterialTransfers />} />
-                <Route path="/qr-scanner" element={<QRStockScanner />} />
-                <Route path="/material-outputs" element={<InputOutput />} />
+                {/* ADMIN ROUTES - Protected */}
+                <Route path="/dashboard/admin" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin']}>
+                    <AdminDashboard />
+                  </PrivateRoute>
+                } />
+                <Route path="/inventory" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin', 'storekeeper']}>
+                    <LaboratoryInventory />
+                  </PrivateRoute>
+                } />
+                <Route path="/transfers" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin', 'storekeeper']}>
+                    <MaterialTransfers />
+                  </PrivateRoute>
+                } />
+                <Route path="/qr-scanner" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin', 'storekeeper']}>
+                    <QRStockScanner />
+                  </PrivateRoute>
+                } />
+                <Route path="/material-outputs" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin', 'storekeeper']}>
+                    <InputOutput />
+                  </PrivateRoute>
+                } />
 
-                {/* STOREKEEPER ROUTES */}
-                <Route path="/dashboard/storekeeper" element={<StorekeeperDashboard />} />
-                <Route path="/maintenance" element={<Maintenance />} />
+                {/* STOREKEEPER ROUTES - Protected */}
+                <Route path="/dashboard/storekeeper" element={
+                  <PrivateRoute allowedRoles={['storekeeper', 'admin', 'superadmin']}>
+                    <StorekeeperDashboard />
+                  </PrivateRoute>
+                } />
+                <Route path="/maintenance" element={
+                  <PrivateRoute allowedRoles={['storekeeper', 'admin', 'superadmin']}>
+                    <Maintenance />
+                  </PrivateRoute>
+                } />
 
-                {/* STUDENT ROUTES */}
-                <Route path="/dashboard/student" element={<StudentDashboard />} />
-                <Route path="/projects" element={<MyProject />} />
-                <Route path="/requests" element={<RequestWorkflow />} />
-                <Route path="/materials/browse" element={<LaboratoryInventory />} />
+                {/* STUDENT ROUTES - Protected */}
+                <Route path="/dashboard/student" element={
+                  <PrivateRoute allowedRoles={['student']}>
+                    <StudentDashboard />
+                  </PrivateRoute>
+                } />
+                <Route path="/projects" element={
+                  <PrivateRoute allowedRoles={['student']}>
+                    <MyProject />
+                  </PrivateRoute>
+                } />
+                <Route path="/requests" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin', 'storekeeper']}>
+                    <RequestWorkflow />
+                  </PrivateRoute>
+                } />
+                <Route path="/materials/browse" element={
+                  <PrivateRoute allowedRoles={['student', 'admin', 'superadmin', 'storekeeper']}>
+                    <BrowseMaterials />
+                  </PrivateRoute>
+                } />
+                <Route path="/settings" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin', 'storekeeper']}>
+                    <Settings />
+                  </PrivateRoute>
+                } />
 
-                <Route
-                  path="/my-requests"
-                  element={<MyRequestsPage toggleTheme={toggleTheme} dark={dark} />}
-                />
+                <Route path="/my-requests" element={
+                  <PrivateRoute allowedRoles={['student']}>
+                    <MyRequestsPage toggleTheme={toggleTheme} dark={darkMode} />
+                  </PrivateRoute>
+                } />
 
                 {/* REQUEST WORKFLOW ROUTES */}
                 <Route path="/requests/guide" element={<RequestButtonsGuide />} />
 
                 {/* VALIDATION SLIP */}
-                <Route path="/validation/:id" element={<ValidationSlipPage dark={dark} />} />
+                <Route path="/validation/:id" element={<ValidationSlipPage dark={darkMode} />} />
 
                 {/* FALLBACK */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </div>
-          </RequestProvider>
-        </ToastProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <BrowserRouter>
+          <ToastProvider>
+            <RequestProvider>
+              <AppContent />
+            </RequestProvider>
+          </ToastProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

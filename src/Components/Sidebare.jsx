@@ -1,11 +1,12 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // باش نقدرو نغيرو الصفحة
+import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import ThemeToggle from './ThemToggel';
 import logo from '../Pages/logo.jpg';
-import { LogOut, X } from 'lucide-react';
+import { LogOut, X, User as UserLogo } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
-const NavItem = ({ label, icon, active, onClick }) => (
+const NavItem = ({ label, icon: IconComponent, active, onClick }) => (
   <button
     onClick={onClick}
     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
@@ -14,20 +15,26 @@ const NavItem = ({ label, icon, active, onClick }) => (
       color: active ? '#fff' : 'var(--text-small)',
     }}
   >
-    {icon}
+    {IconComponent && <IconComponent size={18} />}
     {label}
   </button>
 );
 
 export default function Sidebar({ activeLabel }) {
   const navigate = useNavigate();
+  const { user, logout: handleLogout } = useAuth();
 
   const navItems = [
     { label: 'Dashboard', icon: Icon.dashboard, path: '/dashboard/student' },
     { label: 'My Projects', icon: Icon.projects, path: '/projects' },
-    { label: 'My Requests', icon: Icon.requests, path: '/requests' },
+    { label: 'My Requests', icon: Icon.requests, path: '/my-requests' },
     { label: 'Browse Materials', icon: Icon.browse, path: '/materials/browse' },
   ];
+
+  const handleUserLogout = async () => {
+    await handleLogout();
+    navigate('/login');
+  };
 
   return (
     <aside
@@ -62,7 +69,7 @@ export default function Sidebar({ activeLabel }) {
             label={item.label}
             icon={item.icon}
             active={activeLabel === item.label}
-            onClick={() => navigate(item.path)} // هنا يصرى التنقل
+            onClick={() => navigate(item.path)}
           />
         ))}
       </nav>
@@ -70,29 +77,28 @@ export default function Sidebar({ activeLabel }) {
       {/* User & Logout Section */}
       <div className="p-3" style={{ borderTop: '1px solid var(--card-border)' }}>
         <div className="flex items-center gap-2.5 mb-4 px-1">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white bg-indigo-500">
-            {Icon.user}
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white bg-indigo-500 overflow-hidden">
+            <UserLogo size={16} />
           </div>
-          <div>
-            <div className="text-sm font-semibold text-title-custom leading-tight">
-              Sarah Student
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-title-custom leading-tight truncate">
+              {user?.full_name || user?.username || 'Student User'}
             </div>
-            <div className="text-xs text-small-custom">Student</div>
+            <div className="text-[10px] text-small-custom opacity-70 truncate capitalize">
+              {user?.role || 'Student'}
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-between gap-2 px-1">
           <ThemeToggle />
           <button
-            onClick={() => {
-              localStorage.removeItem('token'); // إذا كان عندك token
-              localStorage.removeItem('user'); // مسح بيانات المستخدم
-              navigate('/login'); // يروح لصفحة login
-            }}
-            className="flex items-center gap-2 text-xs text-small-custom hover:text-red-400 transition-all"
+            onClick={handleUserLogout}
+            className="flex items-center gap-2 text-xs text-small-custom hover:text-red-400 transition-all font-bold"
           >
-            <LogOut size={16} /> {Icon.logout} Logout
+            <LogOut size={16} /> Logout
           </button>
         </div>
+
         <div className="flex justify-center mt-4 pt-3 border-t border-[var(--card-border)]">
           <button
             onClick={() => navigate('/dashboard/student')}

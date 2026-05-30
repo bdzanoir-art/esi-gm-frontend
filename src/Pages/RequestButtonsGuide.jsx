@@ -1,5 +1,5 @@
 import React from 'react';
-import SlideBare from '../Components/SlideBare';
+import Sidebar from '../Components/Sidebar';
 import ThemeToggle from '../Components/ThemeToggle';
 import '../Style/RequestButtonsGuide.css';
 import {
@@ -15,13 +15,12 @@ import {
   PackageOpen,
   RotateCcw,
   CheckCheck,
-  AlertTriangle,
-  UserCheck,
-  Wrench,
   ScanLine,
-  ClipboardCheck,
   Boxes,
   ArrowRight,
+  PlayCircle,
+  AlertCircle,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const workflowSections = [
@@ -31,7 +30,6 @@ const workflowSections = [
     subtitle: 'Request just submitted - System automatically validates based on stock',
     color: 'yellow',
     icon: <CircleDashed size={18} />,
-    final: false,
     actionGroups: [
       {
         badge: 'Automatic Approval',
@@ -43,14 +41,10 @@ const workflowSections = [
           'System checks stock availability in real-time',
           'If ALL materials are in stock → Auto-Approved',
           'Request status changes to "Approved"',
-          'QR code generated automatically',
-          'Validation code created',
-          'Student receives approval notification',
-          'All happens in seconds without manual intervention',
+          'QR code and validation code generated automatically',
         ],
         useCase: 'Immediately when stock is sufficient for all requested materials',
-        example:
-          'A student requests 2 Audio boards and 3 sensors. The system checks stock and finds all materials available. It automatically approves the request, generates a QR code, and sends an approval notification to the student.',
+        example: 'If student requests 2 Arduinos and 3 sensors and all are in stock, it becomes "Approved" instantly.',
       },
       {
         badge: 'Automatic Rejection',
@@ -61,14 +55,10 @@ const workflowSections = [
         whenClick: [
           'System checks stock availability',
           'If ANY material is out of stock → Auto-Rejected',
-          'Request status changes to "Rejected"',
-          'System generates rejection reason automatically',
           'Student receives rejection notification with reason',
-          'Workflow ends - student must submit new request',
         ],
         useCase: 'Immediately when stock is insufficient for requested materials',
-        example:
-          'A student requests 2 Audio boards and 3 sensors. The system checks stock and finds that 1 Arduino board is out of stock. It automatically rejects the request, generates a rejection reason, and sends a rejection notification to the student.',
+        example: 'If 1 requested sensor is out of stock, the system rejects it "Auto-Rejected".',
       },
     ],
   },
@@ -87,15 +77,11 @@ const workflowSections = [
         nextStatus: 'Ready',
         whenClick: [
           'Request status changes to "Ready"',
-          'Technician records condition of EACH material',
-          'Choose: Excellent, Good, Fair, Damaged, or Needs Repair',
-          'Student is notified materials are ready',
-          'Materials are physically set aside for pickup',
-          'Optional notes about material condition',
+          'Technician records condition of EACH material (Excellent, Good, etc.)',
+          'Student is notified materials are ready for pickup',
         ],
         useCase: 'After physically gathering and checking all materials',
-        example:
-          'You collected 2 Audio boards and 3 sensors from storage. You click "Mark Ready" and set each material condition (Excellent / Good / etc).',
+        example: 'You collected 2 Arduino boards and 3 sensors from storage. You click "Mark Ready" after checking them.',
       },
     ],
   },
@@ -115,14 +101,10 @@ const workflowSections = [
         whenClick: [
           'Request status changes to "Collected"',
           'Technician verifies condition of materials again',
-          'Records which materials were given to student',
-          'QR code is scanned at exit checkpoint',
           'Technician name recorded as "Issued By"',
-          'Collection timestamp saved',
         ],
         useCase: 'When student arrives and takes materials',
-        example:
-          'Student arrives at the lab. You scan the QR code, verify identity, hand over the materials, and click "Confirm Pickup".',
+        example: 'Student "Ahmed Benali" arrives. You scan the QR, verify his ID, hand over the items, and click "Confirm Pickup".',
       },
       {
         badge: 'Reject',
@@ -132,8 +114,7 @@ const workflowSections = [
         nextStatus: 'Rejected',
         whenClick: ['Request cancelled', 'Materials returned to inventory'],
         useCase: "If student doesn't show up or request expired",
-        example:
-          'Prepared materials stayed reserved too long and student never arrived. You cancel the request and return items to stock.',
+        example: 'Student never showed up after 3 days. You reject it to free up the materials.',
       },
     ],
   },
@@ -153,12 +134,10 @@ const workflowSections = [
         whenClick: [
           'Request status changes to "In Use"',
           'Materials officially tracked as borrowed',
-          'Expected return date is active',
-          'System tracks if materials become overdue',
+          'Return tracking becomes active',
         ],
         useCase: 'After student confirms they started using materials',
-        example:
-          'Student has the materials and started the work session, so you move the request to In Use.',
+        example: 'Student has the materials and started the work session.',
       },
       {
         badge: 'Confirm Return',
@@ -168,15 +147,10 @@ const workflowSections = [
         nextStatus: 'Returned',
         whenClick: [
           'Request status changes to "Returned"',
-          'Technician checks condition of EACH material',
-          'Compare return condition vs. issued condition',
-          'Document any damage or issues',
-          'Return timestamp recorded',
-          'Technician name recorded as "Received By"',
+          'Technician checks condition and documents any issues',
         ],
-        useCase: 'If student returns materials right away (same day)',
-        example:
-          'Student returns materials shortly after pickup. You inspect each item, record conditions, and add notes if needed.',
+        useCase: 'If student returns materials right away',
+        example: 'Student returns materials shortly after pickup.',
       },
     ],
   },
@@ -195,16 +169,11 @@ const workflowSections = [
         nextStatus: 'Returned',
         whenClick: [
           'Request status changes to "Returned"',
-          'Technician inspects EACH material carefully',
-          'Records condition: Excellent, Good, Fair, Damaged, Needs Repair',
-          'Compares with condition when issued',
-          'Notes any damage: "Screen cracked", "Missing cable", etc.',
-          'QR code scanned at return checkpoint',
-          'Return date/time recorded',
+          'Technician inspects condition carefully (Excellent, Damage, etc.)',
+          'Return timestamp recorded',
         ],
         useCase: 'When student returns materials to the lab',
-        example:
-          'Student returns materials after use. You inspect each one carefully, record condition, and add notes about scratches or missing accessories.',
+        example: 'Student returns materials. You inspect their condition and click "Confirm Return".',
       },
     ],
   },
@@ -223,16 +192,11 @@ const workflowSections = [
         nextStatus: 'Completed',
         whenClick: [
           'Request status changes to "Completed"',
-          'Materials added back to inventory',
-          'Material quantities updated in stock',
-          'If damaged, material status set to "Needs Repair"',
+          'Materials added back to inventory stock',
           'Request closed and archived',
-          'Complete timeline available for auditing',
-          'Student can now make new requests',
         ],
         useCase: 'After inspecting materials and updating inventory',
-        example:
-          'Materials inspected and back in storage. Inventory updated. You click "Complete" to close the request.',
+        example: 'Materials back in storage. Inventory updated. You click "Complete" to close the request.',
       },
       {
         badge: 'In Use',
@@ -243,11 +207,9 @@ const workflowSections = [
         whenClick: [
           'Request status goes back to "In Use"',
           'Materials given back to student',
-          'New expected return date set',
         ],
-        useCase: 'If student forgot something or needs extension',
-        example:
-          'Student returned the materials but still needs them for one more session, so you reopen the request to In Use.',
+        useCase: 'If student needs extension',
+        example: 'Student returned them but asked to use them for one more session.',
       },
     ],
   },
@@ -259,17 +221,15 @@ const workflowSections = [
     icon: <CheckCheck size={18} />,
     final: true,
     finalText: 'Final Status - No actions available. Request workflow is complete.',
-    actionGroups: [],
   },
   {
     id: 8,
     title: '8. Rejected',
-    subtitle: 'Request denied or canceled - NO MORE ACTIONS',
+    subtitle: 'Request denied or cancelled - NO MORE ACTIONS',
     color: 'red',
     icon: <CircleX size={18} />,
     final: true,
     finalText: 'Final Status - No actions available. Request workflow is complete.',
-    actionGroups: [],
   },
 ];
 
@@ -280,9 +240,7 @@ function StatusCard({ section }) {
         <div className="rqg-status-title-wrap">
           <div className={`rqg-status-icon ${section.color}`}>{section.icon}</div>
           <div>
-            <h3>
-              {section.title} <ArrowRight size={14} className="rqg-inline-arrow" />
-            </h3>
+            <h3>{section.title} <ArrowRight size={14} className="rqg-inline-arrow" /></h3>
             <p>{section.subtitle}</p>
           </div>
         </div>
@@ -290,52 +248,34 @@ function StatusCard({ section }) {
 
       {section.final ? (
         <div className="rqg-final-box">
-          <div className="rqg-final-icon">
-            <CheckCircle2 size={22} />
-          </div>
-          <p>{section.finalText}</p>
+          <div className="rqg-final-icon"><CheckCircle2 size={24} /></div>
+          <p className="font-bold">{section.finalText}</p>
         </div>
       ) : (
-        <>
+        <div className="rqg-actions-wrapper">
           <p className="rqg-actions-count">Available Actions ({section.actionGroups.length}):</p>
-
           <div className="rqg-action-list">
             {section.actionGroups.map((action, index) => (
               <div key={index} className="rqg-action-card">
                 <div className="rqg-action-top">
-                  <div className="rqg-action-top-left">
-                    <span className={`rqg-badge ${action.badgeColor}`}>
-                      {action.icon}
-                      {action.badge}
-                    </span>
-
-                    <div className="rqg-action-heading">
-                      <h4>{action.title}</h4>
-                      <span className="rqg-next-status">
-                        ➜ Next Status: <strong>{action.nextStatus}</strong>
-                      </span>
-                    </div>
+                  <span className={`rqg-badge ${action.badgeColor}`}>{action.icon} {action.badge}</span>
+                  <div className="rqg-action-heading">
+                    <h4>{action.title}</h4>
+                    <span className="rqg-next-status">➜ Next Status: <strong>{action.nextStatus}</strong></span>
                   </div>
                 </div>
-
                 <div className="rqg-action-grid">
                   <div className="rqg-info-box">
-                    <h5>🟢 What Happens When You Click:</h5>
-                    <ul>
-                      {action.whenClick.map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
+                    <h5 className="flex items-center gap-2 text-green-500 font-bold"><CheckCircle2 size={14}/> What Happens When You Click:</h5>
+                    <ul>{action.whenClick.map((item, idx) => (<li key={idx}>✅ {item}</li>))}</ul>
                   </div>
-
                   <div className="rqg-side-column">
                     <div className="rqg-info-box warning">
-                      <h5>🟠 When To Use This Button:</h5>
+                      <h5 className="flex items-center gap-2 text-orange-500 font-bold"><Clock3 size={14}/> When To Use This Button:</h5>
                       <p>{action.useCase}</p>
                     </div>
-
                     <div className="rqg-info-box example">
-                      <h5>📘 Example:</h5>
+                      <h5 className="flex items-center gap-2 text-blue-500 font-bold"><Info size={14}/> Example:</h5>
                       <p>{action.example}</p>
                     </div>
                   </div>
@@ -343,7 +283,7 @@ function StatusCard({ section }) {
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
     </section>
   );
@@ -352,138 +292,82 @@ function StatusCard({ section }) {
 export default function RequestButtonsGuide() {
   return (
     <div className="rqg-layout">
-      <SlideBare activeLabel="Requests" />
-
+      <Sidebar />
       <main className="rqg-main">
         <div className="rqg-shell">
           <div className="rqg-topbar">
             <div>
-              <h1 className="rqg-title">Request Buttons - Complete Guide</h1>
-              <p className="rqg-subtitle">
-                Understanding what each action button does in the request workflow
-              </p>
+              <h1 className="rqg-title">Workflow Buttons - Complete Guide</h1>
+              <p className="rqg-subtitle">Every stage from Pending to Completed explained in detail</p>
             </div>
-
             <ThemeToggle />
           </div>
 
           <section className="rqg-hero-box">
             <div className="rqg-hero-title">
-              <Info size={16} />
+              <Info size={18} />
               <span>How it Works</span>
             </div>
-            <p>
-              Each request follows a workflow with different statuses. Depending on the current
-              status,
-              <strong> Admin</strong> and <strong> Storekeeper users</strong> see action buttons to
-              move the request to the next stage.
-            </p>
-            <p>
-              <strong>Students cannot see these buttons</strong> - they can only view their request
-              status and timeline.
-            </p>
+            <p>Admin and Storekeeper users see these buttons based on the current status of a request.</p>
           </section>
 
-          {workflowSections.map((section) => (
-            <StatusCard key={section.id} section={section} />
-          ))}
+          {workflowSections.map((s) => <StatusCard key={s.id} section={s} />)}
 
+          {/* Action Modal Details */}
           <section className="rqg-extra-card">
-            <div className="rqg-extra-header">
-              <FileText size={18} />
-              <h3>Action Modal Details</h3>
-            </div>
-
-            <p className="rqg-extra-text">
-              When you click any action button, a <strong>modal window</strong> opens with a form to
-              fill out:
-            </p>
-
+            <div className="rqg-extra-header"><FileText size={20} className="text-blue-500" /><h3>Action Modal Details</h3></div>
+            <p className="rqg-extra-text">When clicking action buttons, a <strong>modal window</strong> opens for detail input:</p>
             <div className="rqg-extra-grid">
               <div className="rqg-mini-card blue-soft">
+                <p className="font-bold mb-2">📦 For Ready, Collected, Returned, Completed:</p>
                 <ul>
-                  <li>
-                    <strong>For Ready, Collected, Returned, Completed:</strong>
-                  </li>
-                  <li>Material Condition Table: Each material has a dropdown menu</li>
-                  <li>Condition options: Excellent, Good, Fair, Damaged, Needs Repair</li>
-                  <li>Previous condition shown</li>
-                  <li>Lot details</li>
-                  <li>Notes field: Optional text to add details</li>
+                  <li><strong>Material Condition Table:</strong> Set condition for each item.</li>
+                  <li><strong>Options:</strong> Excellent, Good, Fair, Damaged, Needs Repair.</li>
+                  <li><strong>Previous Condition:</strong> Shows status from previous stage.</li>
+                  <li><strong>Notes:</strong> Optional context.</li>
                 </ul>
               </div>
-
               <div className="rqg-mini-card red-soft">
+                <p className="font-bold mb-2 text-red-500">❌ For Reject:</p>
                 <ul>
-                  <li>
-                    <strong>For Reject:</strong>
-                  </li>
-                  <li>Notes REQUIRED</li>
-                  <li>Examples: "Stock insufficient", "Material damaged", "Duplicate request"</li>
-                  <li>Cannot submit until notes are provided</li>
+                  <li><strong>Notes REQUIRED:</strong> Must explain rejection reason.</li>
+                  <li><strong>Examples:</strong> "Stock insufficient", "Duplicate request".</li>
+                  <li><strong>Disable Check:</strong> Submit is disabled until notes are entered.</li>
                 </ul>
               </div>
             </div>
           </section>
 
+          {/* Who Can See These Buttons */}
           <section className="rqg-extra-card">
-            <div className="rqg-extra-header">
-              <ShieldCheck size={18} />
-              <h3>Who Can See These Buttons?</h3>
-            </div>
-
+            <div className="rqg-extra-header"><ShieldCheck size={20} className="text-purple-500" /><h3>Who Can See These Buttons?</h3></div>
             <div className="rqg-role-grid">
               <div className="rqg-role-card admin">
-                <h4>👨‍💼 Admin</h4>
-                <p>
-                  Can see and use <strong>ALL action buttons</strong> for all requests
-                </p>
+                <h4 className="flex items-center gap-2">👤 Admin</h4>
+                <p>✅ Can see and use <strong>ALL action buttons</strong> for all requests.</p>
               </div>
-
               <div className="rqg-role-card keeper">
-                <h4>🏪 Storekeeper</h4>
-                <p>
-                  Can see and use <strong>ALL action buttons</strong> for all requests
-                </p>
+                <h4 className="flex items-center gap-2">🔧 Storekeeper</h4>
+                <p>✅ Can see and use <strong>ALL action buttons</strong> for all requests.</p>
               </div>
-
               <div className="rqg-role-card student">
-                <h4>🎓 Student</h4>
-                <p>
-                  <strong>Cannot see any action buttons</strong> - only can see status and timeline
-                </p>
+                <h4 className="flex items-center gap-2 text-red-500">🎓 Student</h4>
+                <p>❌ <strong>Cannot see any action buttons</strong>. View-only mode for status/timeline.</p>
               </div>
             </div>
           </section>
 
+          {/* Quick Reference */}
           <section className="rqg-extra-card">
-            <div className="rqg-extra-header">
-              <Clock3 size={18} />
-              <h3>Quick Reference - Complete Workflow</h3>
-            </div>
-
+            <div className="rqg-extra-header"><Clock3 size={20} className="text-orange-500" /><h3>Quick Reference - Complete Workflow</h3></div>
             <div className="rqg-code-box">
-              <p>
-                <strong>Standard Flow:</strong>
+              <p><strong>Standard Flow:</strong></p>
+              <p className="text-sm">
+                <span className="rqg-flow yellow">Pending</span> ➜ <span className="rqg-flow blue">Auto-Approved</span> ➜ <span className="rqg-flow cyan">Ready</span> ➜ <span className="rqg-flow purple">Collected</span> ➜ <span className="rqg-flow indigo">In Use</span> ➜ <span className="rqg-flow orange">Returned</span> ➜ <span className="rqg-flow green">Completed</span>
               </p>
-              <p>
-                <span className="rqg-flow yellow">Pending</span> ➜
-                <span className="rqg-flow blue"> Auto-Approved</span> ➜
-                <span className="rqg-flow blue"> Approved</span> ➜
-                <span className="rqg-flow cyan"> Ready</span> ➜
-                <span className="rqg-flow purple"> Collected</span> ➜
-                <span className="rqg-flow indigo"> In Use</span> ➜
-                <span className="rqg-flow orange"> Returned</span> ➜
-                <span className="rqg-flow green"> Completed</span>
-              </p>
-
-              <p>
-                <strong>Rejection Flow:</strong>
-              </p>
-              <p>
-                <span className="rqg-flow yellow">Pending</span> ➜
-                <span className="rqg-flow red"> Auto-Rejected</span> [Stock insufficient]
-              </p>
+              <div className="my-2 border-t border-gray-100 dark:border-gray-800"></div>
+              <p><strong>Rejection Flow:</strong></p>
+              <p className="text-sm"><span className="rqg-flow yellow">Pending</span> ➜ <span className="rqg-flow red">Auto-Rejected</span> (Stock insufficient)</p>
             </div>
           </section>
         </div>

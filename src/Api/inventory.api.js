@@ -1,12 +1,15 @@
 import axios from 'axios';
 
-const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
-});
+const BASE_URL = 'http://localhost:8000/api/esi-gm';
+
+const getAuthHeader = () => {
+  const token = localStorage.getItem('access_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 export const getItems = async () => {
   try {
-    const response = await API.get('/items');
+    const response = await axios.get(`${BASE_URL}/materials/`, { headers: getAuthHeader() });
     return response.data;
   } catch (error) {
     console.error('API Error:', error);
@@ -14,4 +17,5 @@ export const getItems = async () => {
   }
 };
 
-export const getCategories = () => API.get('/categories').then((res) => res.data);
+export const getCategories = () =>
+  axios.get(`${BASE_URL}/categories/`, { headers: getAuthHeader() }).then((res) => res.data);

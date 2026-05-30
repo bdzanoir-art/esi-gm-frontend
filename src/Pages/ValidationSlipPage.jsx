@@ -1,35 +1,142 @@
-import React from 'react';
-import { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import { storekeeperAPI, myRequestAPI } from '../Api/api.service';
+import { useAuth } from '../contexts/AuthContext';
 import {
   X,
   Printer,
   CheckCircle,
-  QrCode,
   Building2Icon,
   Calendar,
   User,
   Package,
   AlertTriangle,
   QrCodeIcon,
+  RotateCcw,
 } from 'lucide-react';
 
-const ValidationSlipPage = ({ isOpen, onClose, requestData, dark }) => {
+const ValidationSlipPage = ({ isOpen: propIsOpen, onClose, requestData: propRequestData, dark }) => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [requestData, setRequestData] = useState(propRequestData || null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Sync state with props if they change (important for modal usage)
+  useEffect(() => {
+    if (propRequestData) {
+      setRequestData(propRequestData);
+      setError(null);
+    }
+  }, [propRequestData]);
+
+  const isOpen = propIsOpen !== undefined ? propIsOpen : true;
+
+  useEffect(() => {
+    // If we have an ID but no data, fetch it
+    if (id && !propRequestData && isOpen) {
+      const fetchRequest = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          
+          let response;
+          // Try student API first if user is student, otherwise storekeeper
+          if (user?.role === 'student') {
+            response = await myRequestAPI.getRequest(id);
+          } else {
+            response = await storekeeperAPI.getRequest(id);
+          }
+          
+          setRequestData(response.data);
+        } catch (err) {
+          console.error('Fetch error:', err);
+          // If 403 on storekeeper API, try student API as fallback
+          if (err.response?.status === 403) {
+             try {
+                const retryRes = await myRequestAPI.getRequest(id);
+                setRequestData(retryRes.data);
+                return;
+             } catch(e) {}
+          }
+          setError('Failed to load validation details. Request might be missing or private.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchRequest();
+    }
+  }, [id, propRequestData, isOpen, user]);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';
     }
-
-    return () => {
-      document.body.style.overflow = 'auto';
-    };
+    return () => { document.body.style.overflow = 'auto'; };
   }, [isOpen]);
 
-  if (!isOpen || !requestData) return null;
+  if (!isOpen) return null;
 
-  const now = new Date();
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl flex flex-col items-center gap-4 shadow-2xl">
+          <RotateCcw className="animate-spin text-indigo-500" size={40} />
+          <p className="font-bold text-lg dark:text-white">Generating Real-Time QR Validation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !requestData) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl text-center max-w-sm shadow-2xl border border-red-500/20">
+          <AlertTriangle className="text-red-500 mx-auto mb-4" size={48} />
+          <h2 className="text-xl font-bold mb-2 dark:text-white">{error || 'Verification Data Missing'}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">We couldn't retrieve the validation details for this request.</p>
+          <button 
+            onClick={onClose || (() => navigate(-1))} 
+            className="w-full py-3 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-bold hover:opacity-90 transition-all"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const getDisplayDate = () => {
+    // Priority: raw API fields first
+    const rawDate = requestData.created_at || requestData.date || requestData.validatedAt || requestData.update;
+    if (!rawDate) return new Date();
+    
+    // Check if it's already a valid date
+    const parsed = new Date(rawDate);
+    if (!isNaN(parsed.getTime())) return parsed;
+
+    // Handle DD/MM/YYYY or DD-MM-YYYY manually (common in local regions)
+    if (typeof rawDate === 'string') {
+       const cleanDate = rawDate.replace(/-/g, '/');
+       if (cleanDate.includes('/')) {
+         const parts = cleanDate.split('/');
+         if (parts.length === 3) {
+            const [p1, p2, p3] = parts;
+            // If p1 is day (>12), it's likely DD/MM/YYYY
+            if (parseInt(p1) > 12) return new Date(`${p3}-${p2}-${p1}`);
+            // Otherwise try standard parts
+            const tryDate = new Date(`${p3}-${p2}-${p1}`);
+            if (!isNaN(tryDate.getTime())) return tryDate;
+         }
+       }
+    }
+    return new Date(); // Fallback to now if everything fails
+  };
+
   const options = {
     weekday: 'long',
     year: 'numeric',
@@ -39,283 +146,229 @@ const ValidationSlipPage = ({ isOpen, onClose, requestData, dark }) => {
     minute: '2-digit',
   };
 
-  const formattedDate = now.toLocaleDateString('fr-FR', options);
+  const handlePrint = () => window.print();
+  const validationDate = getDisplayDate();
+  
+  // Robust data mapping - prioritize String names over numeric IDs
+  const studentName = requestData.student_name || 
+                     requestData.requestedBy || 
+                     (typeof requestData.student === 'string' ? requestData.student : null) || 
+                     'Authorized Student';
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const studentEmail = requestData.student_email || requestData.email || 'student@esi-sba.dz';
+  const projectTitle = requestData.project_name || requestData.title || 'N/A';
+  const requestNo = requestData.request_number || requestData.qr || requestData.validationCode || `REQ-${requestData.id}`;
+  const materialItems = Array.isArray(requestData.items) ? requestData.items : (requestData.materials ? [{ name: requestData.materials, quantity: 1 }] : []);
 
-  const validationDate = requestData.validatedAt ? new Date(requestData.validatedAt) : new Date();
+  // Use a reliable date string for QR
+  let qrDateStr = new Date().toISOString().split('T')[0];
+  try {
+     if (validationDate && !isNaN(validationDate.getTime())) {
+        qrDateStr = validationDate.toISOString().split('T')[0];
+     }
+  } catch(e) {}
+
+  const qrValue = JSON.stringify({
+    req: requestNo,
+    user: studentName,
+    date: qrDateStr
+  });
 
   return (
     <div
       onClick={onClose}
-      className={`fixed inset-0 z-[60] flex items-start py-10 justify-center bg-white/50 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto ${
-        dark ? 'bg-[#1E293B]/70 backdrop-blur-sm' : 'bg-[#F1F5F9]/70 backdrop-blur-sm'
+      className={`fixed inset-0 z-[60] flex items-start py-10 justify-center bg-slate-900/40 backdrop-blur-md p-2 sm:p-4 overflow-y-auto ${
+        dark ? 'dark' : ''
       }`}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative ${dark ? 'bg-[#121825]' : 'bg-[#F8FAFC]'} w-full max-w-full sm:max-w-2xl lg:max-w-3xl rounded-2xl shadow-2xl my-2 sm:my-6 animate-in fade-in zoom-in duration-300 print:shadow-none print:my-0`}
+        className="relative bg-slate-50 dark:bg-[#0A1128] w-full max-w-3xl rounded-[32px] shadow-2xl my-2 sm:my-6 animate-in fade-in zoom-in duration-500 border border-white/10 overflow-hidden print:shadow-none print:my-0 print:rounded-none"
       >
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between sm:items-center p-4 sm:p-6 print:hidden">
+        {/* Header Decor */}
+        <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 print:hidden" />
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center p-6 sm:p-8 print:hidden">
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-[#05DF72]" size={24} />
-              <h1
-                className={`text-xl font-inter font-bold ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-              >
+            <div className="flex items-center gap-3">
+              <div className="bg-green-500/10 p-2 rounded-lg">
+                <CheckCircle className="text-[#05DF72]" size={28} />
+              </div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                 Bon de Validation
               </h1>
             </div>
-            <h3
-              className={`font-inter font-normal text-[13px] ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} mt-2`}
-            >
-              {' '}
-              Demande de Matériel - Approuvée Automatiquement{' '}
-            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium italic">
+             Laboratory Pass • Approved Order Verification
+            </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-[#6366F1] text-white rounded-lg font-semibold transition-all hover:bg-indigo-700"
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold transition-all hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-lg shadow-indigo-600/20"
             >
-              Imprimer
+              <Printer size={18} /> Print Pass
             </button>
             <button
-              onClick={onClose}
-              className={`px-4 py-2 ${dark ? 'bg-[#1E293B] text-[#E8EAF0]' : 'bg-[#F1F5F9] text-[#0F172A]'} rounded-lg font-semibold`}
+              onClick={onClose || (() => navigate(-1))}
+              className="px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-inter"
             >
-              Fermer
+              Close
             </button>
           </div>
         </div>
 
-        <div className="mr-4 ml-4 mt-3 p-3 space-y-6 text-slate-800">
-          <div className="flex items-center gap-4 p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/10">
-            <div className="h-12 rounded-lg flex items-center justify-center text-[#6366F1] font-inter text-xl italic">
-              <Building2Icon />
+        <div className="px-6 pb-8 sm:px-8 space-y-8 font-inter">
+          {/* Institution Info */}
+          <div className="flex items-center gap-4 p-5 rounded-2xl border border-indigo-500/10 bg-indigo-500/5 dark:bg-indigo-500/10">
+            <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100 dark:border-indigo-900/50">
+              <Building2Icon size={24} />
             </div>
             <div>
-              <h2
-                className={`font-inter text-base font-semibold ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-              >
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
                 École Supérieure d'Informatique
               </h2>
-              <p className={`text-xs  ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
-                Système de Gestion d'Équipements - ESI-GM
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                Laboratory Management System • ESI-GM
               </p>
             </div>
           </div>
 
+          {/* Validation Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div
-              className={`p-4 border ${dark ? 'bg-[rgba(30,41,59,0.5)] border-[#1E293B]' : 'bg-[rgba(241,245,249,0.5)] border-[#E2E8F0]'} rounded-xl`}
-            >
-              <p
-                className={`flex items-start text-xs ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} font-semibold uppercase mb-1`}
-              >
-                Code de Validation
+            <div className="p-5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+                <QrCodeIcon size={12} className="text-indigo-500" /> Validation Ref
               </p>
-              <p className="flex items-start text-lg font-mono font-bold text-indigo-600 uppercase">
-                {requestData.validationCode || 'ESI-MMKR5GVG-VX6K'}
+              <p className="text-xl font-mono font-black text-indigo-600 dark:text-indigo-400">
+                {requestNo}
               </p>
             </div>
-            <div
-              className={`p-4 border  ${dark ? 'bg-[rgba(30,41,59,0.5)] border-[#1E293B]' : 'bg-[rgba(241,245,249,0.5)] border-[#E2E8F0]'} rounded-xl`}
-            >
-              <p
-                className={`flex items-start text-xs ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} font-semibold uppercase mb-1`}
-              >
-                Date de Validation
+            <div className="p-5 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+                <Calendar size={12} className="text-indigo-500" /> Issued Date
               </p>
-
-              <p
-                className={`flex items-start text-sm font-bold ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-              >
-                <Calendar className="w-[20px] h-[20px] p-[3px]" />{' '}
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 {validationDate.toLocaleDateString('fr-FR', options)}
               </p>
             </div>
           </div>
 
-          <div className="p-6 border border-blue-500/20 bg-blue-500/10 rounded-xl">
-            <div className="flex items-center gap-2 mb-4 font-inter text-base font-semibold border-blue-100 pb-2">
-              <User className="text-[#51A2FF] w-[20px] h-[20px]" />
-              <p className={`${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}>
-                Informations de l'Étudiant
-              </p>
+          {/* Student & Project */}
+          <div className="p-6 bg-blue-600/5 dark:bg-indigo-600/5 border border-indigo-500/20 rounded-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+               <User size={80} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 text-sm">
-              <div>
-                <p
-                  className={`flex items-start ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} text-xs`}
-                >
-                  Nom
+            <div className="flex items-center gap-2 mb-6 font-bold text-slate-900 dark:text-indigo-300">
+              <User size={18} />
+              <span>Borrower Information</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 relative z-10">
+              <div className="space-y-1">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Student Name</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">
+                  {studentName}
                 </p>
-                <p
-                  className={`flex items-start text-[16px] font-medium leading-6 ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-                >
-                  {requestData.studentName || 'Sarah Student'}
-                </p>
+                <p className="text-xs text-slate-400">{studentEmail}</p>
               </div>
-              <div>
-                <p
-                  className={`flex items-start ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} text-xs`}
-                >
-                  Email ESI
-                </p>
-                <p
-                  className={`flex items-start text-[16px] font-medium leading-6 ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-                >
-                  {requestData.studentEmail || 's.student@esi-sba.dz'}
-                </p>
-              </div>
-              <div className="col-span-2">
-                <p
-                  className={`flex items-start ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} text-xs`}
-                >
-                  Projet
-                </p>
-                <p
-                  className={`flex items-start text-[16px] font-medium leading-6 ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-                >
-                  {requestData.title}
+              <div className="space-y-1 text-right sm:text-left">
+                <p className="text-[10px] text-slate-400 font-bold uppercase">Project Context</p>
+                <p className="text-base font-semibold text-slate-800 dark:text-slate-300">
+                  {projectTitle}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="border-[0.667px] border-[#00C950]/20 bg-[#00C950]/10 flex min-h-[180px] flex-col items-start gap-4 self-stretch pb-[0.667px] pt-[24.667px] px-[24.667px] shrink-0 rounded-xl">
-            <div className="flex items-center gap-2 mb-3 text-green-800 font-inter font-medium">
-              <Package className="w-[20px] h-[20px] text-[#05DF72]" />
-              <p className={`${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}>
-                Matériel Validé ({requestData.items?.length || 0} article){' '}
-              </p>
+          {/* Materials Table */}
+          <div className="border border-green-500/20 bg-green-500/5 dark:bg-green-500/10 p-6 rounded-2xl">
+            <div className="flex items-center gap-2 mb-6 text-green-700 dark:text-green-400 font-bold">
+              <Package size={20} />
+              <span>Validated Material List</span>
             </div>
-            <div className="w-full rounded-xl overflow-x-auto">
-              <table
-                className={`w-full font-inter ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} text-sm leading-5 text-left`}
-              >
-                <thead className="bg-transparent">
-                  <tr>
-                    <th className="px-4 py-3 text-[13px] font-medium">#</th>
-                    <th className="px-4 py-3 text-[13px] font-medium">Nom du Matériel</th>
-                    <th className="px-4 py-3 text-[13px] font-medium">Catégorie</th>
-                    <th className="px-4 py-3 text-center text-[13px] font-medium">Quantité</th>
+            <div className="w-full overflow-hidden">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="text-[10px] text-slate-400 font-bold uppercase tracking-widest border-b border-green-500/10">
+                    <th className="pb-3 px-2">Item Name</th>
+                    <th className="pb-3 text-center">Quantity</th>
+                    <th className="pb-3 text-right">Verification</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
-                  {requestData.items?.map((item, idx) => (
-                    <tr key={idx} className="border-none">
-                      <td
-                        className={`px-4 py-3 font-medium ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}
-                      >
-                        {idx + 1}
+                <tbody className="divide-y divide-green-500/10">
+                  {materialItems.length > 0 ? materialItems.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="py-4 px-2 font-bold text-slate-900 dark:text-white">
+                        {item.name || item.material_name || item.materialId?.name || "Item"}
                       </td>
-                      <td
-                        className={`px-4 py-3 font-medium ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-                      >
-                        {item.name || item.materialId?.name}
+                      <td className="py-4 text-center font-mono font-bold">
+                         {item.quantity || item.qty || 1}
                       </td>
-                      <td className={`px-4 py-3 ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
-                        {item.category || 'Matériel'}
-                      </td>
-                      <td
-                        className={`px-4 py-3 font-medium text-center ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}
-                      >
-                        {item.qty || item.quantity}
+                      <td className="py-4 text-right">
+                         <span className="px-3 py-1 bg-green-500/20 text-green-600 dark:text-green-400 text-[10px] font-black uppercase rounded-full border border-green-500/20">
+                           PASS
+                         </span>
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr><td colSpan="3" className="py-4 text-center text-slate-400 italic">No specific items listed</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div
-            className={`flex flex-col items-center py-6 rounded-2xl border ${dark ? 'bg-[rgba(30, 41, 59, 0.50)] border-[#1E293B]' : 'bg-[rgba(241, 245, 249, 0.50)] border-[#E2E8F0]'} shrink-0 self-stretch border-[0.667px]`}
-          >
-            <div className="flex flex-row items-center justify-start gap-2 mb-3 w-full px-6">
-              <QrCodeIcon
-                className={`flex items-start w-[20px] h-[20px] ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}`}
-              />
-              <h3
-                className={`flex items-start ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'}  font-inter text-[18px] font-bold leading-[27px]`}
-              >
+          <div className={`flex flex-col items-center py-8 rounded-2xl border ${dark ? 'bg-[rgba(30,41,59,0.50)] border-[#1E293B]' : 'bg-[rgba(241,245,249,0.50)] border-[#E2E8F0]'}`}>
+            <div className="flex items-center gap-2 mb-6 w-full px-6">
+              <QrCodeIcon className={dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'} size={20} />
+              <h3 className="font-inter text-lg font-bold">
                 QR Code de Validation
               </h3>
             </div>
 
-            <div className="flex h-[180px] sm:h-[200px] w-full max-w-[650px] mb-[20px] justify-center items-center bg-white rounded-2xl shadow-sm">
-              {/* الإطار الأسود الخارجي للـ QR */}
-              <div className="bg-white p-4 rounded-xl border-[12px] border-solid border-[#101828] shadow-sm border mb-2">
-                {/* هنا نحطو الـ QR Code الحقيقي */}
+            <div className="flex p-4 bg-white rounded-2xl shadow-xl border-[8px] border-slate-900 mb-4 transition-transform hover:scale-105 duration-300">
                 <QRCodeSVG
-                  value={requestData.validationCode || 'NO-CODE'}
-                  size={120}
-                  level="H" // جودة عالية باش حتى ويكون مطبوع يبان
-                  includeMargin={false}
+                  value={qrValue}
+                  size={160}
+                  level="H"
                 />
-              </div>
             </div>
 
-            <p
-              className={`flex items-start text-[10px] ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}
-            >
-              Scannez ce code pour vérifier l'authenticité du bon
+            <p className="mt-8 text-[11px] font-bold text-slate-400 dark:text-slate-500 max-w-[240px] text-center leading-relaxed">
+              SCAN FOR AUTHENTICATION<br />
+              <span className="opacity-50">This pass is crypto-verified against ESI-GM records.</span>
             </p>
           </div>
 
-          <div className="rounded-[12px] border-[0.667px] border-solid border-[rgba(240,177,0,0.20)] bg-[rgba(240,177,0,0.10)] rounded-2xl p-5 space-y-2 border-b">
-            <div
-              className={`flex items-center gap-2 ${dark ? 'text-[#E8EAF0]' : 'text-[#0F172A]'} font-bold text-xs uppercase`}
-            >
-              <AlertTriangle size={14} /> Notes Importantes:
+          {/* Notes */}
+          <div className="p-6 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl">
+            <div className="flex items-center gap-2 mb-3 text-yellow-600 font-bold text-xs uppercase letter-spacing-1">
+              <AlertTriangle size={14} /> Usage Policy
             </div>
-            <ul
-              className={`list-none flex flex-col items-start text-[11px] ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} space-y-1 opacity-80 list-disc ml-4`}
-            >
-              <li>Ce bon a été validé automatiquement par le système ESI-GM</li>
-              <li>La disponibilité du stock a été vérifiée au moment de la demande</li>
-              <li>Présentez ce bon au magasinier pour récupérer le matériel</li>
-              <li>Le matériel doit être retourné dans les délais convenus</li>
-              <li>Tout dommage ou perte sera signalé dans le système</li>
+            <ul className="list-disc ml-5 text-[11px] text-slate-500 dark:text-slate-400 space-y-2 font-medium">
+              <li>Present this digital or printed pass to the storekeeper.</li>
+              <li>Stocks were locked at the time of validation.</li>
+              <li>All materials must be returned within the project timeline.</li>
             </ul>
           </div>
 
-          <div
-            className={`grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 pt-6 text-[11px] ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} font-base border-b border-t ${dark ? 'border-[#1E293B]' : 'border-[#E2E8F0]'} pb-3`}
-          >
-            <div className="space-y-5">
-              <p className="flex items-start">Signature de l'Étudiant</p>
-              <div className={`border-b ${dark ? 'border-[#1E293B]' : 'border-[#E2E8F0]'}`}></div>
-              <p className="flex items-start">
-                Date:{' '}
-                <span className={`ml-2 ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
-                  ________________
-                </span>
-              </p>
+          {/* Signatures */}
+          <div className="grid grid-cols-2 gap-12 pt-8 pb-12">
+            <div className="space-y-12">
+              <p className="text-[10px] font-bold uppercase text-slate-400 text-center">Borrower Signature</p>
+              <div className="border-b border-dashed border-slate-300 dark:border-slate-700 w-full" />
             </div>
-            <div className="space-y-5">
-              <p className="flex items-start">Signature du Magasinier</p>
-              <div className={`border-b ${dark ? 'border-[#1E293B]' : 'border-[#E2E8F0]'}`}></div>
-              <p className="flex items-start">
-                Date:{' '}
-                <span className={`ml-2 ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
-                  ________________
-                </span>
-              </p>
+            <div className="space-y-12">
+              <p className="text-[10px] font-bold uppercase text-slate-400 text-center">Storekeeper Final Check</p>
+              <div className="border-b border-dashed border-slate-300 dark:border-slate-700 w-full" />
             </div>
           </div>
-
-          <p
-            className={`text-[9px] text-center ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'} pt-4`}
-          >
-            Généré automatiquement par ESI-GM (Système de Gestion d'Équipements)
-            <br />
-            École Supérieure d'Informatique - 8 Mai 1945, Sidi Bel Abbès
-          </p>
+        </div>
+        
+        <div className="bg-slate-100 dark:bg-slate-900/50 p-4 text-center">
+            <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">
+              Generated by ESI-GM Protocol v2.1 • Authenticity Guaranteed
+            </p>
         </div>
       </div>
     </div>

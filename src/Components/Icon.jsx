@@ -23,6 +23,9 @@ import {
   X,
   Cpu,
   ArrowRight,
+  TrendingUp,
+  AlertTriangle,
+  BookOpen,
 } from 'lucide-react';
 
 export const Icon = {
@@ -50,4 +53,7 @@ export const Icon = {
   close: X,
   chip: Cpu,
   arrow: ArrowRight,
+  itrending: TrendingUp,
+  overdue: AlertTriangle,
+  browse: BookOpen,
 };

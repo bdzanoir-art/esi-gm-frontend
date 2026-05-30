@@ -1,5 +1,5 @@
 import { useState } from "react";
-import ThemeToggel from '../components/ThemToggel';
+import ThemeToggel from '../Components/ThemToggel';
 // ─── CreateProjectModal ───────────────────────────────────────────────────────
 export default function CreateProjectModal({ onClose, onCreate }) {
   const [projectName, setProjectName] = useState("");
@@ -24,10 +24,9 @@ export default function CreateProjectModal({ onClose, onCreate }) {
   const handleCreate = () => {
     if (!projectName.trim()) return;
     onCreate?.({
-      title: projectName,
-      desc: description,
-      members: members.length,
-      createdAt: new Date().toLocaleDateString("fr-FR"),
+      name: projectName,
+      description: description,
+      team_members: members,
     });
     onClose?.();
   };

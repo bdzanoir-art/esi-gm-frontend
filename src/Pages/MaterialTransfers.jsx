@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import SlideBare from "../Components/SlideBare";
+import React, { useMemo, useState, useEffect } from "react";
+import Sidebar from "../Components/Sidebar";
 import ThemeToggle from "../Components/ThemeToggle";
 import {
   ArrowRightLeft,
@@ -12,25 +12,59 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { studentAPI, browseAPI, transfersAPI } from "../Api/api.service";
 
 const initialTransfers = [];
 
 function TransferForm({ onCancel, onSubmit }) {
   const [fromLab, setFromLab] = useState("");
   const [toLab, setToLab] = useState("");
-  const [priority, setPriority] = useState("medium");
+  const [priority, setPriority] = useState("Medium");
   const [reason, setReason] = useState("");
   const [materialName, setMaterialName] = useState("");
   const [qty, setQty] = useState("");
   const [materials, setMaterials] = useState([]);
 
+  const [allLabs, setAllLabs] = useState([]);
+  const [allMaterials, setAllMaterials] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [labsRes, matsRes] = await Promise.all([
+          studentAPI.getLaboratories(),
+          browseAPI.getMaterials()
+        ]);
+        let labs = labsRes.data || labsRes;
+        let mats = matsRes.data?.results || matsRes.data || matsRes;
+        
+        if (!Array.isArray(mats) || mats.length === 0) {
+          // Try studentAPI as fallback if browseAPI is empty
+          const studentMatsRes = await studentAPI.getMaterials();
+          mats = studentMatsRes.data || studentMatsRes;
+        }
+
+        setAllLabs(Array.isArray(labs) ? labs : []);
+        setAllMaterials(Array.isArray(mats) ? mats : []);
+      } catch (err) {
+        console.error("Error fetching form data:", err);
+        // Fallback or keep empty
+      }
+    };
+    fetchData();
+  }, []);
+
   const addMaterial = () => {
-    if (!materialName.trim() || !qty.trim()) return;
+    if (!materialName || !qty || Number(qty) <= 0) return;
+
+    // Find the material name if materialName is an ID or keep it if it's already the name
+    const selectedMat = allMaterials.find(m => String(m.id) === String(materialName) || m.name === materialName);
+    const nameToDisplay = selectedMat ? selectedMat.name : materialName;
 
     const newMaterial = {
       id: Date.now(),
-      name: materialName,
-      qty: Number(qty),
+      name: nameToDisplay,
+      quantity: Number(qty),
     };
 
     setMaterials((prev) => [...prev, newMaterial]);
@@ -47,21 +81,16 @@ function TransferForm({ onCancel, onSubmit }) {
 
     if (!fromLab || !toLab || !reason || materials.length === 0) return;
 
-    const totalUnits = materials.reduce((sum, item) => sum + item.qty, 0);
+    const totalUnits = materials.reduce((sum, item) => sum + item.quantity, 0);
 
     onSubmit({
-      id: Date.now(),
       title: `Transfer #${Date.now().toString().slice(-4)}`,
-      status: "approved",
+      status: "pending",
       fromLab,
       toLab,
-      date: new Date().toLocaleDateString(),
-      requestedBy: "Robotics Lab Admin",
-      itemsCount: materials.length,
-      totalUnits,
       priority,
       reason,
-      materials,
+      materials: materials.map(({ name, quantity }) => ({ name, quantity })),
     });
   };
 
@@ -76,19 +105,33 @@ function TransferForm({ onCancel, onSubmit }) {
           <div className="tf-form-grid">
             <div className="tf-field">
               <label>From Lab *</label>
-              <input value={fromLab} onChange={(e) => setFromLab(e.target.value)} />
+              <select value={fromLab} onChange={(e) => setFromLab(e.target.value)}>
+                <option value="">Select laboratory</option>
+                {allLabs.length > 0 ? allLabs.map(lab => (
+                  <option key={lab.id} value={lab.name}>{lab.name}</option>
+                )) : (
+                  <option disabled>No laboratories found</option>
+                )}
+              </select>
             </div>
 
             <div className="tf-field">
               <label>To Lab *</label>
-              <input value={toLab} onChange={(e) => setToLab(e.target.value)} />
+              <select value={toLab} onChange={(e) => setToLab(e.target.value)}>
+                <option value="">Select laboratory</option>
+                {allLabs.length > 0 ? allLabs.map(lab => (
+                  <option key={lab.id} value={lab.name}>{lab.name}</option>
+                )) : (
+                  <option disabled>No laboratories found</option>
+                )}
+              </select>
             </div>
           </div>
 
           <div className="tf-field">
             <label>Priority</label>
             <div className="tf-priority-row">
-              {["low", "medium", "high", "urgent"].map((item) => (
+              {["Low", "Medium", "High", "Urgent"].map((item) => (
                 <button
                   key={item}
                   type="button"
@@ -115,11 +158,19 @@ function TransferForm({ onCancel, onSubmit }) {
             <label>Materials to Transfer *</label>
 
             <div className="tf-material-entry">
-              <input
-                placeholder="Material name"
+              <select
                 value={materialName}
                 onChange={(e) => setMaterialName(e.target.value)}
-              />
+              >
+                <option value="">Select material</option>
+                {allMaterials.length > 0 ? allMaterials.map(mat => (
+                  <option key={mat.id} value={mat.title || mat.name || "Unnamed Item"}>
+                    {mat.title || mat.name || `Item ${mat.id}`}
+                  </option>
+                )) : (
+                  <option disabled>No materials found</option>
+                )}
+              </select>
               <input
                 placeholder="Qty"
                 type="number"
@@ -137,7 +188,7 @@ function TransferForm({ onCancel, onSubmit }) {
                 <div key={item.id} className="tf-material-item">
                   <span>{item.name}</span>
                   <div className="tf-material-item-right">
-                    <strong>{item.qty}</strong>
+                    <strong>{item.quantity}</strong>
                     <button type="button" onClick={() => removeMaterial(item.id)}>
                       <X size={14} />
                     </button>
@@ -158,7 +209,7 @@ function TransferForm({ onCancel, onSubmit }) {
         </form>
       </div>
     </div>
-  );
+    );
 }
 
 export default function MaterialTransfers() {
@@ -168,23 +219,46 @@ export default function MaterialTransfers() {
   const [openId, setOpenId] = useState(null);
 
   const stats = useMemo(() => {
+    const safeTransfers = Array.isArray(transfers) ? transfers : [];
     return {
-      pending: transfers.filter((item) => item.status === "pending").length,
-      inTransit: transfers.filter((item) => item.status === "in-transit").length,
-      delivered: transfers.filter((item) => item.status === "delivered").length,
-      total: transfers.length,
+      pending: safeTransfers.filter((item) => item.status === "pending").length,
+      inTransit: safeTransfers.filter((item) => item.status === "in-transit").length,
+      delivered: safeTransfers.filter((item) => item.status === "delivered").length,
+      total: safeTransfers.length,
     };
   }, [transfers]);
 
   const filteredTransfers = useMemo(() => {
-    if (activeFilter === "all") return transfers;
-    return transfers.filter((item) => item.status === activeFilter);
+    const safeTransfers = Array.isArray(transfers) ? transfers : [];
+    if (activeFilter === "all") return safeTransfers;
+    return safeTransfers.filter((item) => item.status === activeFilter);
   }, [activeFilter, transfers]);
 
-  const handleCreateTransfer = (newTransfer) => {
-    setTransfers((prev) => [newTransfer, ...prev]);
-    setShowCreateForm(false);
+  const handleCreateTransfer = async (transferData) => {
+    try {
+      const res = await transfersAPI.createTransfer(transferData);
+      setTransfers((prev) => [res.data, ...prev]);
+      setShowCreateForm(false);
+    } catch (err) {
+      console.error("Error creating transfer:", err);
+      alert("Failed to save transfer to database. Please check your connection.");
+      setShowCreateForm(false);
+    }
   };
+
+  useEffect(() => {
+    const fetchTransfers = async () => {
+      try {
+        const res = await transfersAPI.getTransfers();
+        const data = res.data?.results || res.data || res;
+        setTransfers(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching transfers:", err);
+        setTransfers([]);
+      }
+    };
+    fetchTransfers();
+  }, []);
 
   const toggleOpen = (id) => {
     setOpenId((prev) => (prev === id ? null : id));
@@ -192,7 +266,7 @@ export default function MaterialTransfers() {
 
   return (
     <div className="app-layout">
-      <SlideBare activeLabel="Transfers" />
+        <Sidebar />
 
       <main className="app-main">
         <div className="page-shell">
@@ -304,14 +378,14 @@ export default function MaterialTransfers() {
                             </span>
                           </div>
 
-                          <div className="tf-transfer-meta">
+                           <div className="tf-transfer-meta">
                             <span>{transfer.fromLab}</span>
                             <span>•</span>
                             <span>{transfer.toLab}</span>
                             <span>•</span>
-                            <span>{transfer.date}</span>
+                            <span>{transfer.date || "No date"}</span>
                             <span>•</span>
-                            <span>{transfer.requestedBy}</span>
+                            <span>{transfer.requestedBy || "Admin"}</span>
                           </div>
 
                           <div className="tf-transfer-footer">
@@ -366,10 +440,10 @@ export default function MaterialTransfers() {
                           <span className="tf-expanded-label">Materials</span>
 
                           <div className="tf-materials-list">
-                            {transfer.materials.map((item) => (
+                            {Array.isArray(transfer.materials) && transfer.materials.map((item) => (
                               <div key={item.id} className="tf-materials-item">
                                 <span>{item.name}</span>
-                                <strong>{item.qty}</strong>
+                                <strong>{item.quantity || item.qty}</strong>
                               </div>
                             ))}
                           </div>

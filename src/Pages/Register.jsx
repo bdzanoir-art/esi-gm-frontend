@@ -3,13 +3,15 @@ import axios from 'axios';
 import { Sun, Moon, User, Mail, Lock, UserCircle, ChevronDown } from 'lucide-react';
 import logoEsi from './logo.jpg';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 function Register() {
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     password: '',
-    account_type: '',
+    account_type: 'Student',
   });
 
   const [errors, setErrors] = useState({
@@ -30,7 +32,7 @@ function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const validateEmail = (email) => /^[a-z]\.[a-z]{3,}@esi-sba\.dz$/;
+  const validateEmail = (email) => /^[a-zA-Z]\.[a-zA-Z]{3,}@esi-sba\.dz$/.test(email);
   const validatePassword = (password) => /^(?=.*[0-9]).{6,}$/.test(password);
 
   const validateForm = () => {
@@ -74,19 +76,19 @@ function Register() {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/register/', formData);
-      console.log(response.data);
-      setSuccess('Account created successfully');
-      navigate('/login');
-      setFormData({ full_name: '', email: '', password: '', account_type: '' });
-      setErrors({});
+      const result = await register(formData);
+      if (result.success) {
+        setSuccess('Account created successfully! Redirecting to dashboard...');
+        setTimeout(() => {
+          navigate('/dashboard/student');
+        }, 1200);
+      } else {
+        setSuccess('');
+        setErrors({ ...errors, general: result.error || 'Registration failed' });
+      }
     } catch (err) {
       setSuccess('');
-      if (!err?.response) {
-        setErrors({ ...errors, general: 'No server response' });
-      } else {
-        setErrors({ ...errors, general: 'Registration failed' });
-      }
+      setErrors({ ...errors, general: 'Registration failed. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -157,7 +159,7 @@ function Register() {
             </span>
           </div>
 
-          <h1 className={`text-2xl font-black mt-2 ${themeColors.textMain}`}>Create Account</h1>
+          <h1 className={`text-2xl font-black mt-4 text-center w-full ${themeColors.textMain}`}>Create Account</h1>
 
           <p
             className={`font-inter font-normal text-sm leading-[30px] text-center ${themeColors.textSecondary}`}

@@ -3,11 +3,13 @@ import { Wrench } from "lucide-react";
 
 export default function AddMaintenanceModal({ onClose, onSubmit, materials }) {
   const [form, setForm] = useState({
-    material: "", issue: "", priority: "Low"
+    material: "", issue: "", priority: "Low", quantity: 1
   });
 
+  const selectedMaterial = materials.find(m => m.name === form.material);
+
   const handleSubmit = () => {
-    if (!form.material || !form.issue) return;
+    if (!form.material || !form.issue || !form.quantity) return;
     onSubmit(form);
     onClose();
   };
@@ -57,7 +59,7 @@ export default function AddMaintenanceModal({ onClose, onSubmit, materials }) {
         </div>
 
         {/* Priority */}
-        <div className="mb-5">
+        <div className="mb-3">
           <label className="text-xs font-medium text-small-custom mb-1 block">Priority <span className="text-red-500">*</span></label>
           <select
             value={form.priority}
@@ -69,6 +71,22 @@ export default function AddMaintenanceModal({ onClose, onSubmit, materials }) {
             <option value="High">High</option>
             <option value="Critical">Critical</option>
           </select>
+        </div>
+
+        {/* Quantity */}
+        <div className="mb-5">
+          <label className="text-xs font-medium text-small-custom mb-1 block">Quantity to Maintenance <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            min="1"
+            max={selectedMaterial?.qty || 100}
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 1 })}
+            className="w-full border-1 border-[var(--br)] rounded-xl px-3 py-2 text-sm bg-[var(--btn-signin-bg)] text-title-custom focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          {selectedMaterial && (
+            <p className="text-[10px] text-gray-500 mt-1">Available in stock: {selectedMaterial.available || selectedMaterial.qty}</p>
+          )}
         </div>
 
         {/* Footer */}

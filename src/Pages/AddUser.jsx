@@ -11,6 +11,7 @@ const AddUser = ({
   onChange,
   onRoleSelect,
   onSubmit,
+  isEditing = false,
 }) => {
   useEffect(() => {
     if (isOpen) {
@@ -40,9 +41,9 @@ const AddUser = ({
               <UserPlus size={24} strokeWidth={2.5} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Add New User</h2>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{isEditing ? 'Edit User Role' : 'Add New User'}</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Create a new user account
+                {isEditing ? 'Update user role and permissions' : 'Create a new user account'}
               </p>
             </div>
           </div>
@@ -72,7 +73,8 @@ const AddUser = ({
                   errors.fullName
                     ? 'border-red-400 focus:ring-red-500/20'
                     : 'border-[#E2E8F0] dark:border-[#1E293B] focus:ring-indigo-500/20'
-                }`}
+                } ${isEditing ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={isEditing}
               />
               {errors.fullName && (
                 <p className="text-sm text-red-500 flex items-center gap-2 ml-1">
@@ -96,7 +98,8 @@ const AddUser = ({
                   errors.email
                     ? 'border-red-400 focus:ring-red-500/20'
                     : 'border-[#E2E8F0] dark:border-[#1E293B] focus:ring-indigo-500/20'
-                }`}
+                } ${isEditing ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={isEditing}
               />
               <p className="text-xs text-slate-400 ml-1">Use institutional email (@esi-sba.dz)</p>
               {errors.email && (
@@ -166,15 +169,17 @@ const AddUser = ({
               )}
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4">
-              <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                📧 Default Password
-              </p>
-              <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mt-1">
-                The user will receive an email with a temporary password. They will be required to
-                change it on first login.
-              </p>
-            </div>
+            {!isEditing && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4">
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                  📧 Default Password
+                </p>
+                <p className="text-sm text-[#64748B] dark:text-[#94A3B8] mt-1">
+                  The user will receive an email with a temporary password. They will be required to
+                  change it on first login.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="p-6 m-4 bg-slate-50/50 dark:bg-[#121825] flex gap-4 border-t border-[#E2E8F0] dark:border-[#1E293B]">
@@ -189,7 +194,7 @@ const AddUser = ({
               type="submit"
               className="flex-1 px-6 py-4 rounded-2xl font-semibold bg-[#6366F1] text-white hover:bg-indigo-700 transition-all active:scale-95"
             >
-              Create User
+              {isEditing ? 'Save Changes' : 'Create User'}
             </button>
           </div>
         </form>

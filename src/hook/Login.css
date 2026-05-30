@@ -371,11 +371,19 @@ html:not(.dark) .login-page-v3 {
 }
 
 .login-brand-logo {
-  width: 64px;
-  height: 64px;
+  display: block;
+  margin: 0 auto 12px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
-  border-radius: 999px;
-  margin-bottom: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px;
+  transition: transform 0.3s ease;
+}
+
+.login-brand-logo:hover {
+  transform: scale(1.05);
 }
 
 .login-brand-name {
@@ -1644,7 +1652,8 @@ html:not(.dark) .login-input-v3 input:-webkit-autofill:active {
 }
 
 .tf-field input,
-.tf-field textarea {
+.tf-field textarea,
+.tf-field select {
   width: 100%;
   border: 1px solid var(--border);
   background: var(--card-2);

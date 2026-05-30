@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUsers, deleteUser, createUser } from '../Api/userMana.api.js';
+import Sidebar from '../Components/Sidebar';
 import {
-  LayoutDashboard,
-  LogOut,
   Moon,
   Sun,
   Search,
@@ -14,17 +13,21 @@ import {
   Wrench,
   GraduationCap,
   Crown,
-  X,
   Mail,
   SquarePen,
   Building2,
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../Context/ThemeContext';
 import AddUser from './AddUser.jsx';
-import logo from './logo.jpg';
 
 const UserManagement = () => {
-  const [darkMode, setDarkMode] = useState(false);
+  const { user: currentUser } = useAuth();
+  const { darkMode } = useTheme();
+  const isAdminOnly = currentUser?.role === 'admin';
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [selectedRole, setSelectedRole] = useState('Student');
   const [loading, setLoading] = useState(true);
   // 1. Rejja3na users dakhél state bach l-Delete tkhdem
@@ -108,66 +111,39 @@ const UserManagement = () => {
     if (!validateForm()) return;
 
     try {
-      const newUser = await createUser(formData);
-      setUserList([...userList, newUser]); // نزيدوه للـ Liste بلا ما نديرو Refresh
-      closeAddUser();
+      if (editingUser) {
+        import('../Api/userMana.api.js').then(async ({ updateUserRole }) => {
+            const updatedUser = await updateUserRole(editingUser.id, formData.role);
+            setUserList(userList.map(u => u.id === editingUser.id ? { ...u, role: formData.role } : u));
+            setShowEditUser(false);
+            setEditingUser(null);
+        });
+      } else {
+        const newUser = await createUser(formData);
+        setUserList([...userList, newUser]);
+        closeAddUser();
+      }
     } catch (err) {
-      alert('Error adding user');
+      alert('Error saving user');
     }
+  };
+
+  const openEditUser = (user) => {
+    setEditingUser(user);
+    setFormData({ fullName: user.fullName || user.name || '', email: user.email, role: user.role });
+    setSelectedRole(user.role);
+    setErrors({ fullName: '', email: '', role: '' });
+    setShowEditUser(true);
+  };
+
+  const closeEditUser = () => {
+    setShowEditUser(false);
+    setEditingUser(null);
   };
   return (
     <div className={darkMode ? 'dark' : ''}>
       <div className="relative flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-        <aside className="w-64 hidden md:flex md:w-64 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
-          <div className="p-6 flex items-center gap-3 border-b border-[#E2E8F0] dark:border-[#1E293B]">
-            <div className="flex-shrink-0 w-[48px] h-[48px]">
-              <img
-                src={logo}
-                alt="Logo"
-                className="w-full h-full rounded-full bg-lightgray bg-center bg-cover bg-no-repeat"
-              />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
-                ESI-GM
-              </h1>
-              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] tracking-wider">
-                Lab Equipment
-              </p>
-            </div>
-          </div>
-
-          <nav className="flex-1 px-4 space-y-1 mt-4">
-            <button
-              onClick={() => navigate('/dashboard/superadmin')}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 bg-transparent transition-all"
-            >
-              <LayoutDashboard size={18} />
-              <span className="font-medium text-[13px]">Dashboard</span>
-            </button>
-          </nav>
-
-          <div className="p-6 border-t dark:border-[#2B4C9F] border-[#E2E8F0]">
-            <p className="text-xs font-bold dark:text-white">Robotics Lab Admin</p>
-            <p className="text-[10px] dark:text-[#94A3B8] text-[#64748B]">Admin</p>
-            <button
-              onClick={() => {
-                localStorage.removeItem('token'); // إذا كان عندك token
-                localStorage.removeItem('user'); // مسح بيانات المستخدم
-                navigate('/login'); // يروح لصفحة login
-              }}
-              className="flex items-center bg-transparent gap-2 mt-4 hover:text-red-500 transition-colors dark:text-white text-slate-800"
-            >
-              <LogOut size={18} /> <span className="text-sm font-medium">Logout</span>
-            </button>
-          </div>
-          <button
-            onClick={() => navigate('/dashboard/superadmin')}
-            className="flex flex-col items-start w-full sm:w-[255px] h-auto sm:h-[52px] pt-[16.667px] px-4 sm:px-[117.667px] border-t dark:border-[#2B4C9F] border-t border-[#E2E8F0] bg-transparent rounded-none dark:text-white"
-          >
-            <X className="w-[20px] h-[20px] flex-shrink-0" />
-          </button>
-        </aside>
+        <Sidebar />
 
         <main className="flex-1 flex flex-col relative">
           <header className="h-16 flex items-center justify-end px-4 sm:px-6 md:px-10">
@@ -190,12 +166,14 @@ const UserManagement = () => {
                 </p>
               </div>
 
-              <button
-                onClick={openAddUser}
-                className="w-full sm:w-auto bg-[#6366F1] text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold"
-              >
-                <Plus size={18} strokeWidth={3} /> Add User
-              </button>
+              {!isAdminOnly && (
+                <button
+                  onClick={openAddUser}
+                  className="w-full sm:w-auto bg-[#6366F1] text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold"
+                >
+                  <Plus size={18} strokeWidth={3} /> Add User
+                </button>
+              )}
             </div>
 
             {/* Stats Cards - Design Kima Kont Dayrou Bedebt */}
@@ -282,7 +260,7 @@ const UserManagement = () => {
                         <th className="px-8 py-4 font-medium">Email Address</th>
                         <th className="px-8 py-4 font-medium">Role</th>
                         <th className="px-8 py-4 font-medium">Laboratory</th>
-                        <th className="px-8 py-4 text-right font-medium">Actions</th>
+                        {!isAdminOnly && <th className="px-8 py-4 text-right font-medium">Actions</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -333,28 +311,28 @@ const UserManagement = () => {
                                 {user.lab}
                               </div>
                             </td>
-                            <td className="px-8 py-5 text-right">
-                              {user.role !== 'Super Admin' ? (
-                                <div className="flex justify-end gap-2">
-                                  <button
-                                    onClick={() => {
-                                      console.log('Edit user:', user.id);
-                                    }}
-                                    className="p-2 text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 dark:bg-slate-800 rounded-lg"
-                                  >
-                                    <SquarePen size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(user.id)}
-                                    className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-slate-50 dark:bg-slate-800 rounded-lg"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="h-9"></div>
-                              )}
-                            </td>
+                            {!isAdminOnly && (
+                              <td className="px-8 py-5 text-right">
+                                {user.role !== 'Super Admin' ? (
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={() => openEditUser(user)}
+                                      className="p-2 text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 dark:bg-slate-800 rounded-lg"
+                                    >
+                                      <SquarePen size={16} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(user.id)}
+                                      className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-slate-50 dark:bg-slate-800 rounded-lg"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="h-9"></div>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         ))
                       ) : (
@@ -372,14 +350,15 @@ const UserManagement = () => {
           </div>
 
           <AddUser
-            isOpen={showAddUser}
-            onClose={closeAddUser}
+            isOpen={showAddUser || showEditUser}
+            onClose={showEditUser ? closeEditUser : closeAddUser}
             formData={formData}
             errors={errors}
             selectedRole={selectedRole}
             onChange={handleChange}
             onRoleSelect={handleRoleSelect}
             onSubmit={handleSubmit}
+            isEditing={!!editingUser}
           />
         </main>
       </div>

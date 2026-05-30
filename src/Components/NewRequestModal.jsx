@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, CheckCircle2, Trash2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { submitNewRequest, validateStock } from '../Api/requests.api.js';
-import { useEffect } from 'react';
+import { browseAPI, studentAPI, myRequestAPI } from '../Api/api.service';
 
 const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
   //(Form State)
@@ -15,7 +15,12 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   // (Dynamic Materials State)
-  const [materials, setMaterials] = useState([{ id: Date.now(), name: '', qty: 1 }]);
+  const [materials, setMaterials] = useState([{ id: Date.now(), name: '', materialId: '', qty: 1 }]);
+  const [availableMaterials, setAvailableMaterials] = useState([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+  
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
 
   // 3.(Validation Errors)
   const [errors, setErrors] = useState({});
@@ -30,9 +35,33 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
         startDate: '',
         endDate: '',
       });
-      setMaterials([{ id: Date.now(), name: '', qty: 1 }]);
+      setMaterials([{ id: Date.now(), name: '', materialId: '', qty: 1 }]);
       setIsValidated(false);
-      document.body.style.overflow = 'hidden'; //  scroll
+      document.body.style.overflow = 'hidden';
+
+      // Fetch available materials from backend
+      setLoadingMaterials(true);
+      browseAPI.getMaterials()
+        .then((res) => {
+          setAvailableMaterials(res.data || []);
+        })
+        .catch((err) => {
+          console.error('Failed to load materials:', err);
+          setAvailableMaterials([]);
+        })
+        .finally(() => setLoadingMaterials(false));
+
+      // Fetch student projects from backend
+      setLoadingProjects(true);
+      studentAPI.getProjects()
+        .then((res) => {
+          setProjects(res.data || []);
+        })
+        .catch((err) => {
+          console.error('Failed to load projects:', err);
+          setProjects([]);
+        })
+        .finally(() => setLoadingProjects(false));
     } else {
       document.body.style.overflow = 'auto';
     }
@@ -41,7 +70,7 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
 
   // ------
   const addMaterialField = () => {
-    setMaterials([...materials, { id: Date.now(), name: '', qty: 1 }]);
+    setMaterials([...materials, { id: Date.now(), name: '', materialId: '', qty: 1 }]);
   };
 
   const removeMaterialField = (id) => {
@@ -54,7 +83,7 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
     let newErrors = {};
 
     // 1.
-    if (!formData.project.trim()) newErrors.project = 'Project name is required';
+    if (!formData.project || !String(formData.project).trim()) newErrors.project = 'Project is required';
     if (!formData.purpose.trim()) newErrors.purpose = 'Purpose is required';
     if (!formData.startDate) newErrors.startDate = 'Start date is required';
     if (!formData.endDate) newErrors.endDate = 'End date is required';
@@ -104,14 +133,27 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
 
   //  (validateForm)
   const updateMaterial = (id, field, value) => {
-    const newMaterials = materials.map((m) => {
-      if (m.id === id) {
-        const finalValue = field === 'qty' ? parseInt(value) || 0 : value;
-        return { ...m, [field]: finalValue };
-      }
-      return m;
-    });
-    setMaterials(newMaterials);
+    setMaterials((prev) =>
+      prev.map((m) => {
+        if (m.id === id) {
+          const finalValue = field === 'qty' ? parseInt(value) || 0 : value;
+          return { ...m, [field]: finalValue };
+        }
+        return m;
+      })
+    );
+  };
+
+  // Update both materialId and name in a single state update
+  const updateMaterialSelection = (id, materialId, name) => {
+    setMaterials((prev) =>
+      prev.map((m) => {
+        if (m.id === id) {
+          return { ...m, materialId, name };
+        }
+        return m;
+      })
+    );
   };
 
   // to Backend
@@ -125,16 +167,14 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
 
       try {
         const finalSubmission = {
-          project: formData.project,
+          project_id: parseInt(formData.project, 10),
           purpose: formData.purpose,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          items: materials.map((m) => ({ name: m.name, qty: m.qty })),
-          // الـ status والـ date السيرفر هو اللي يديرهم في العادة
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+          items: materials.map((m) => ({ material_name: m.name, quantity: m.qty })),
         };
 
-        // نعيطو للدالة لي درناها في ملف الـ api
-        const response = await submitNewRequest(finalSubmission);
+        const response = await myRequestAPI.createRequest(finalSubmission);
 
         // إذا نجحت العملية:
         if (onAddRequest) onAddRequest(response); // نحدثو القائمة في الصفحة الرئيسية
@@ -149,32 +189,14 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
       }
     }
   };
-  const handleValidate = async (e) => {
+  const handleValidate = (e) => {
     if (e) e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      const response = await axios.post('/api/requests/validate', {
-        project: formData.project,
-        purpose: formData.purpose,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        materials: materials.map((m) => ({
-          name: m.name,
-          qty: m.qty,
-        })),
-      });
-
-      if (response.data.valid) {
-        setIsValidated(true);
-        setValidationMessage('✓ All materials are available! Ready to submit');
-      } else {
-        setIsValidated(false);
-        setValidationMessage(response.data.message);
-      }
-    } catch (error) {
+    if (validateForm()) {
+      setIsValidated(true);
+      setValidationMessage('✓ Quantities are in stock & dates are valid! Ready to submit.');
+    } else {
       setIsValidated(false);
-      setValidationMessage('Server error while validating request');
+      setValidationMessage('Please fix the errors above before continuing.');
     }
   };
 
@@ -211,14 +233,22 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
             >
               Project *
             </label>
-            <input
-              type="text"
-              className={`w-full px-4 py-3 ${dark ? 'bg-[#020817]' : 'bg-[#F8FAFC]'} rounded-xl outline-none border border-transparent focus:border-gray-200 ${
+            <select
+              className={`w-full px-4 py-3 ${dark ? 'bg-[#020817] text-[#E8EAF0]' : 'bg-[#F8FAFC] text-[#0F172A]'} rounded-xl outline-none border border-transparent focus:border-gray-200 ${
                 errors.project ? 'border-red-500' : ''
               }`}
               value={formData.project}
               onChange={(e) => setFormData({ ...formData, project: e.target.value })}
-            />
+            >
+              <option value="">-- Select your project --</option>
+              {loadingProjects ? (
+                <option disabled>Loading projects...</option>
+              ) : (
+                projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name || p.title}</option>
+                ))
+              )}
+            </select>
             {errors.project && (
               <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                 <AlertCircle size={12} /> {errors.project}
@@ -295,44 +325,68 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
             >
               Materials *
             </label>
-            {materials.map((mat, index) => (
+            {materials.map((mat, index) => {
+              // Find selected material to show stock info
+              const selectedMat = availableMaterials.find(
+                (m) => String(m.id) === String(mat.materialId)
+              );
+              const maxQty = selectedMat ? (selectedMat.quantity || selectedMat.quantity_available || 999) : 999;
+
+              return (
               <div
                 key={mat.id}
                 className={`flex flex-col sm:flex-row border ${dark ? 'border-[#2B4C9F]' : 'border-[#E2E8F0]'} rounded-xl p-3 gap-2 animate-in slide-in-from-top-1 duration-200`}
               >
                 <div className="flex-1 flex flex-col">
-                  <input
-                    type="text"
-                    placeholder="Material name"
-                    value={mat.name}
-                    onChange={(e) => updateMaterial(mat.id, 'name', e.target.value)}
-                    className={`flex-1 w-full sm:w-auto px-4 py-3 ${dark ? 'bg-[#020817]' : 'bg-[#F8FAFC]'} rounded-xl outline-none border border-transparent transition-all`}
-                  />
+                  <select
+                    value={mat.materialId}
+                    onChange={(e) => {
+                      const selId = e.target.value;
+                      const selMat = availableMaterials.find((m) => String(m.id) === selId);
+                      updateMaterialSelection(mat.id, selId, selMat ? (selMat.name || selMat.title) : '');
+                    }}
+                    className={`flex-1 w-full sm:w-auto px-4 py-3 ${dark ? 'bg-[#020817] text-[#E8EAF0]' : 'bg-[#F8FAFC] text-[#0F172A]'} rounded-xl outline-none border border-transparent transition-all`}
+                  >
+                    <option value="">-- Select a material --</option>
+                    {loadingMaterials ? (
+                      <option disabled>Loading materials...</option>
+                    ) : (
+                      availableMaterials.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name || m.title} (Qty: {m.quantity ?? m.quantity_available ?? '?'})
+                        </option>
+                      ))
+                    )}
+                  </select>
                   {errors.materials && errors.materials[index]?.name && (
                     <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                       <AlertCircle size={12} /> {errors.materials[index].name}
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col w-20 sm:w-auto">
+                <div className="flex flex-col w-24 sm:w-auto">
                   <input
-                    type="text"
+                    type="number"
+                    min="1"
+                    max={maxQty}
                     value={mat.qty}
                     onChange={(e) => {
                       let value = parseInt(e.target.value) || 0;
+                      if (value > maxQty) value = maxQty;
                       updateMaterial(mat.id, 'qty', value);
                     }}
-                    defaultValue={1}
-                    className={`w-20 w-full sm:w-auto px-2 py-3 ${dark ? 'bg-[#020817] text-[#94A3B8]' : 'bg-[#F8FAFC] text-[#64748B]'} rounded-xl text-center border border-transparent outline-none`}
+                    className={`w-24 w-full sm:w-auto px-2 py-3 ${dark ? 'bg-[#020817] text-[#94A3B8]' : 'bg-[#F8FAFC] text-[#64748B]'} rounded-xl text-center border border-transparent outline-none`}
                   />
+                  {selectedMat && (
+                    <p className={`text-xs mt-1 ${dark ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>Max: {maxQty}</p>
+                  )}
                   {mat.qty <= 0 && (
                     <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                      <AlertCircle size={12} /> Quantity must be greater than 0
+                      <AlertCircle size={12} /> {'Qty must be > 0'}
                     </p>
                   )}
                 </div>
                 {mat.error && <p className="text-xs text-red-500 mt-1">{mat.error}</p>}
-                {/*button of delete*/}
                 {materials.length > 1 && (
                   <button
                     type="button"
@@ -343,7 +397,8 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
                   </button>
                 )}
               </div>
-            ))}
+              );
+            })}
 
             <button
               onClick={addMaterialField}
@@ -353,41 +408,46 @@ const NewRequestModal = ({ isOpen, onClose, onAddRequest, dark }) => {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleValidate}
-            className={`flex justify-center items-center gap-1 w-full px-6 py-3 font-inter rounded-[12px] border transition-colors duration-200
-    ${
-      dark
-        ? 'bg-[#1E293B] border-[0.667px] border-[#2B4C9F] text-[#E8EAF0] hover:bg-[#1B2634]'
-        : 'bg-[#F1F5F9] border-[0.667px] border-[#E2E8F0] text-[#0F172A] hover:bg-[#e6eaf0]'
-    }`}
-          >
-            <CheckCircle2 size={20} />
-            Validate Request
-          </button>
-
-          <div
-            className={`flex flex-col sm:flex-row gap-4 pt-6 border-t ${dark ? 'border-[#2B4C9F]' : 'border-[#E2E8F0]'} mt-6`}
-          >
-            <button
-              type="submit"
-              disabled={!isValidated || submitting}
-              className={`flex-1 py-3 bg-[#2B4C9F]/50 text-white rounded-xl font-inter hover:bg-[#2B4C9F]/80 transition-all duration-200 ${
-                isValidated
-                  ? 'bg-[#2B4C9F] text-white hover:bg-[#2B4C9F]/90'
-                  : 'bg-[#2B4C9F] text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {submitting ? 'Sending...' : 'Submit Request'}
-            </button>
+          <div className="space-y-4 pt-4 border-t dark:border-[#2B4C9F] mt-4">
             <button
               type="button"
-              onClick={onClose}
-              className={`flex-1 py-3 border rounded-xl ${dark ? 'bg-[#0A1128] border-[#2B4C9F] text-[#E8EAF0]' : 'bg-[#FFF] border-[#E2E8F0] text-[#0F172A]'} font-inter`}
+              onClick={handleValidate}
+              className={`flex justify-center items-center gap-2 w-full px-6 py-3.5 font-bold rounded-xl border transition-all duration-200 shadow-sm
+                ${dark 
+                  ? 'bg-slate-800 border-[#2B4C9F] text-[#E8EAF0] hover:bg-slate-700' 
+                  : 'bg-slate-50 border-[#E2E8F0] text-slate-900 hover:bg-slate-100'}`}
             >
-              Cancel
+              <CheckCircle2 size={18} />
+              Validate Stock Availability
             </button>
+
+            {validationMessage && (
+              <div className={`p-3 rounded-xl text-xs font-semibold text-center animate-in fade-in slide-in-from-top-2
+                ${isValidated ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                {validationMessage}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="submit"
+                disabled={!isValidated || submitting}
+                className={`flex-[2] py-3.5 rounded-xl font-bold transition-all duration-200 shadow-lg
+                  ${isValidated 
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/20 hover:-translate-y-0.5' 
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'}`}
+              >
+                {submitting ? 'Creating Request...' : 'Submit Request'}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className={`flex-1 py-3.5 border rounded-xl font-bold transition-all
+                  ${dark ? 'bg-transparent border-[#2B4C9F] text-[#E8EAF0] hover:bg-slate-800' : 'bg-white border-[#E2E8F0] text-slate-900 hover:bg-slate-50'}`}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
 
           {serverError && (
