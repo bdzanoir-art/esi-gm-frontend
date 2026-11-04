@@ -63,6 +63,7 @@ export default function Sidebar() {
         { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard/superadmin' },
         { label: 'Users', icon: Users, path: '/admin/users' },
         { label: 'Laboratories', icon: Building2, path: '/admin/laboratories' },
+        { label: 'Requests', icon: ClipboardList, path: '/requests' },
         { label: 'Settings', icon: SettingsIcon, path: '/settings' },
       ];
     }
@@ -76,6 +77,7 @@ export default function Sidebar() {
 
     if (role === 'admin') {
       items.push({ label: 'Users', icon: Users, path: '/admin/users' });
+      items.push({ label: 'Requests', icon: ClipboardList, path: '/requests' });
     }
 
     items.push(

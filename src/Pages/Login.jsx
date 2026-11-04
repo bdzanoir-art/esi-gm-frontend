@@ -98,7 +98,15 @@ export default function Login() {
             </div>
 
             <div className="login-field-v3">
-              <label>Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label>Password</label>
+                <span 
+                  onClick={() => navigate('/forgot-password')}
+                  style={{ fontSize: '12px', color: '#6366f1', cursor: 'pointer', fontWeight: '500' }}
+                >
+                  Forgot Password?
+                </span>
+              </div>
               <div className="login-input-v3">
                 <Lock size={16} />
                 <input

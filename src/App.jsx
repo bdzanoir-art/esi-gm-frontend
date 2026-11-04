@@ -11,6 +11,8 @@ import PrivateRoute from './Components/PrivateRoute';
 import LandingPage from './Pages/landing-page'; // تأكدي: landing-page.jsx
 import Login from './Pages/Login';
 import Register from './Pages/Register';
+import ForgotPassword from './Pages/ForgotPassword';
+import VerifyCode from './Pages/VerifyCode';
 
 // ============= DASHBOARDS =============
 import SuperAdminDashboard from './Pages/SuperAdminDashboard';
@@ -34,6 +36,7 @@ import MyProject from './Pages/Myproject';
 import MaintenanceManagement from './Pages/MaintenanceManagement';
 import BrowseMaterials from './Pages/BrowseMaterials';
 import Settings from './Pages/Settings';
+import Reports from './Pages/Reports';
 
 import './App.css';
 
@@ -62,6 +65,8 @@ function AppContent() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/verify-code" element={<VerifyCode />} />
 
                 {/* SUPER ADMIN ROUTES - Protected */}
                 <Route path="/dashboard/superadmin" element={
@@ -89,6 +94,11 @@ function AppContent() {
                 <Route path="/inventory" element={
                   <PrivateRoute allowedRoles={['admin', 'superadmin', 'storekeeper']}>
                     <LaboratoryInventory />
+                  </PrivateRoute>
+                } />
+                <Route path="/reports" element={
+                  <PrivateRoute allowedRoles={['admin', 'superadmin']}>
+                    <Reports />
                   </PrivateRoute>
                 } />
                 <Route path="/transfers" element={

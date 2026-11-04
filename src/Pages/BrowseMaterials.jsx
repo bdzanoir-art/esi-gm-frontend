@@ -51,9 +51,7 @@ function MaterialCard({ material, onClick }) {
               <Tag size={11} /> {material.category_name}
             </span>
           )}
-          <span className={`browse-badge ${available ? 'browse-badge--ok' : 'browse-badge--out'}`}>
-            {available ? `${material.quantity} available` : 'Out of stock'}
-          </span>
+          
         </div>
       </div>
     </div>
@@ -87,12 +85,7 @@ function MaterialDetailModal({ material, onClose }) {
             <span className="browse-modal__label"><Tag size={13} /> Category</span>
             <span className="browse-modal__value">{material.category_name || '—'}</span>
           </div>
-          <div className="browse-modal__row">
-            <span className="browse-modal__label"><Layers size={13} /> Quantity</span>
-            <span className={`browse-badge ${available ? 'browse-badge--ok' : 'browse-badge--out'}`}>
-              {available ? `${material.quantity} in stock` : 'Out of stock'}
-            </span>
-          </div>
+          
           {material.location && (
             <div className="browse-modal__row">
               <span className="browse-modal__label">Location</span>

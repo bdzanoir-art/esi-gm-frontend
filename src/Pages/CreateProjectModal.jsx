@@ -5,7 +5,7 @@ export default function CreateProjectModal({ onClose, onCreate }) {
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
   const [members, setMembers] = useState([
-    { name: "Sarah Student", email: "m.student@esi-sba.dz" },
+    { name: "Student", email: "m.student@esi-sba.dz" },
   ]);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");

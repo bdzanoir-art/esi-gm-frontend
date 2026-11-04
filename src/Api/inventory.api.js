@@ -7,9 +7,9 @@ const getAuthHeader = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const getItems = async () => {
+export const getItems = async (search = '') => {
   try {
-    const response = await axios.get(`${BASE_URL}/materials/`, { headers: getAuthHeader() });
+    const response = await axios.get(`${BASE_URL}/materials/`, { headers: getAuthHeader(),params : search ? { search } : {},});
     return response.data;
   } catch (error) {
     console.error('API Error:', error);
